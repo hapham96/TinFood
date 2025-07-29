@@ -1,18 +1,21 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Search from "./pages/Search";
+import Explore from "./pages/Explore";
+import Favorite from "./pages/Favorite";
+import BottomTabBar from "./components/BottomTabBar";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <div className="text-3xl font-bold underline text-blue-600">
-        Hello TinFood 🍽️
-      </div>
-    </>
-  )
-}
+    <Router>
+      <div className="pb-16 min-h-screen">
+        <Routes>
+          <Route path="/" element={<Search />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/favorite" element={<Favorite />} />
+        </Routes>
 
-export default App
+        <BottomTabBar />
+      </div>
+    </Router>
+  );
+}
