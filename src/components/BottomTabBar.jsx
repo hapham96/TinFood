@@ -9,7 +9,7 @@ const tabItems = [
 
 export default function BottomTabBar() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md flex justify-around items-center h-16">
+    <nav className="fixed bottom-0 border-gray-200 left-0 right-0 bg-white border-t shadow-md flex justify-around items-center h-16 rounded-xl mx-4 mb-4 shadow-lg">
       {tabItems.map((item) => (
         <NavLink
           key={item.to}
@@ -17,7 +17,7 @@ export default function BottomTabBar() {
           end={item.to === "/"}
           className={({ isActive }) =>
             `flex flex-col items-center text-sm ${
-              isActive ? "text-blue-600 font-semibold" : "text-gray-400"
+              isActive ? "text-sky-500 font-semibold" : "text-gray-700"
             }`
           }
         >
