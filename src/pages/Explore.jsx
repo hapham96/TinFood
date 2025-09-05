@@ -3,22 +3,28 @@ import TinderCard from 'react-tinder-card';
 
 const restaurants = [
   {
+    id: 1,
     name: "Pho 24",
-    image: "https://source.unsplash.com/400x300/?pho",
+    image: "https://media.istockphoto.com/id/910864612/vi/anh/vietnamese-soup-pho-bo.jpg?s=612x612&w=0&k=20&c=mWhHVgX-_ag5SoqPB-I2m-MZLJoZYw25CuEGoSZ25vo=",
     location: "District 1, HCMC",
     tags: ["Vietnamese", "Noodle", "Affordable"],
+    rating: 4.5,
   },
   {
+    id: 2,
     name: "Pizza 4P's",
-    image: "https://source.unsplash.com/400x300/?pizza",
+    image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGl6emF8ZW58MHx8MHx8fDA%3D",
     location: "District 3, HCMC",
     tags: ["Italian", "Pizza", "Cozy"],
+    rating: 4,
   },
   {
+    id: 3,
     name: "Lẩu Wang",
     image: "https://down-vn.img.susercontent.com/vn-11134259-7r98o-lwadano70esbe6@resize_ss576x330",
     location: "Bình Thạnh, HCMC",
     tags: ["Korean", "Hotpot", "Buffet"],
+    rating: 2,
   },
 ];
 
@@ -55,7 +61,12 @@ const Explore = () => {
               }}
             >
               <div className="bg-sky-500 bg-opacity-60 text-white p-4 rounded-lg mt-auto w-full">
-                <h2 className="text-xl font-semibold">{res.name}</h2>
+                 <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">{res.name}</h2>
+                  <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
+                    {res.rating ?? 0}/5★
+                  </span>
+                </div>
                 <p className="text-sm">{res.location}</p>
                 <div className="flex gap-2 flex-wrap mt-2">
                   {res.tags.map((tag) => (
