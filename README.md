@@ -1,9 +1,11 @@
 # React + Vite + TaiwindCSS
-- javac v21.0.4
+- java v21.0.4
 - node v24
+- compileSdkVersion 35
+- capacitor v7
 # Build this project
 - build on web: npm run dev
-- build android device: npm run build:apk
+- build on android device: npm run build:apk
 
 
  
