@@ -1,14 +1,15 @@
 # React + Vite + TaiwindCSS
 - java v21.0.4
-- node v24
+- node v20
 - compileSdkVersion 35
 - capacitor v7
+- gradle 8.9
 # Build this project
 - build on web: npm run dev
 - build on android device: npm run build:apk
 
 
- 
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
