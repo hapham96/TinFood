@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { use, useState } from "react";
 import TinderCard from "react-tinder-card";
+import { useApi } from "../services/baseApi/useApi";
+import { foodService } from "../services/food.service";
 
 const restaurants = [
   {
@@ -35,10 +37,15 @@ const restaurants = [
 ];
 
 const Explore = () => {
+  const logger = use("ExplorePage");
+  const { data, error } = useApi(
+    () => foodService.getRestaurants()
+  );
+  logger.info("getRestaurants - loaded: ", { data, error });
   const [lastDirection, setLastDirection] = useState();
 
   const swiped = (direction, name) => {
-    console.log("You swiped " + direction + " on " + name);
+    logger.info("You swiped " + direction + " on " + name);
     setLastDirection(direction);
     if (direction === "right") {
       const confirmGo = window.confirm(
