@@ -1,8 +1,7 @@
 // src/services/auth.service.ts
 import { BehaviorSubject } from 'rxjs';
 import { StorageService } from './storage.service';
-
-const TOKEN_KEY = 'auth_token';
+import { STORAGE_KEYS } from "../utils/constants";
 
 export class AuthService {
   #storage: StorageService;
@@ -15,7 +14,7 @@ export class AuthService {
   }
 
   private async init() {
-    const savedToken = await this.#storage.get(TOKEN_KEY);
+    const savedToken = await this.#storage.get(STORAGE_KEYS.TOKEN_KEY);
     if (savedToken) {
       this.#_token = savedToken;
       this.authState.next(true);
@@ -31,7 +30,7 @@ export class AuthService {
         const fakeToken = `token_${Date.now()}`;
         this.#_token = fakeToken;
         console.log('Fake login successful - token: ', fakeToken);
-        await this.#storage.set(TOKEN_KEY, fakeToken);
+        await this.#storage.set(STORAGE_KEYS.TOKEN_KEY, fakeToken);
         this.authState.next(true);
 
         return true;
@@ -45,13 +44,13 @@ export class AuthService {
 
   async logout(): Promise<void> {
     this.#_token = null;
-    await this.#storage.remove(TOKEN_KEY);
+    await this.#storage.remove(STORAGE_KEYS.TOKEN_KEY);
     this.authState.next(false);
   }
 
   async getToken(): Promise<string | null> {
     if (!this.#_token) {
-      this.#_token = await this.#storage.get(TOKEN_KEY);
+      this.#_token = await this.#storage.get(STORAGE_KEYS.TOKEN_KEY);
     }
     return this.#_token;
   }

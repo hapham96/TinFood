@@ -1,31 +1,123 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Select from "react-select";
 import { useLogger } from "../services/logger/useLogger";
-const tagsOptions = [
-  { value: "cafe", label: "cafe" },
-  { value: "matcha", label: "matcha" },
-  { value: "drink", label: "drink" },
-  { value: "black_coffee", label: "black coffee" },
-];
+import { foodService } from "../services/food.service";
+import { useApiEffect } from "../services/baseApi/useApi";
+import { StorageService } from "../services/storage.service";
+import { displayKmLabel } from "../utils/helpers";
+import { DEFAULT_LOCATION } from "../utils/constants";
+import { STORAGE_KEYS } from "../utils/constants";
 
 export default function Search() {
   const logger = useLogger("SearchPage");
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [suggestions, setSuggestions] = useState(null);
+  const storageService = new StorageService();
 
-  const handleGetSuggestions = () => {
-    logger.info("handleGetSuggestions -> ");
-    const foodList = [
-      "Matcha Đá Xay (matcha, trà xanh, cafe, đá xay)",
-      "Cà phê đá (vietnamese coffee, iced coffee)",
-      "Cà phê đen (black coffee, strong flavor)",
-    ];
-    const restaurantList = [
-      "Gong Cha - Vinhomes Central Park (7.264★)",
-      "Phúc Long - Lê Văn Thọ (7★)",
-      "Quán 567 - Sinh Tố, Giải Khát (5.182★)",
-    ];
-    setSuggestions({ foodList, restaurantList });
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [hasLoadedFromCache, setHasLoadedFromCache] = useState(false);
+
+  const { data, error, refetch } = useApiEffect(() => foodService.getTags(), {
+    auto: false,
+  });
+
+  // Load tags from cache or fetch API
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const cachedTags = await storageService.get(STORAGE_KEYS.TAGS);
+        if (cachedTags) {
+          const parsed = JSON.parse(cachedTags);
+          setTags(parsed);
+          setHasLoadedFromCache(true);
+          logger.info("✅ Loaded tags from storage", parsed);
+        } else {
+          refetch();
+        }
+      } catch (err) {
+        logger.error("loadTags error", err);
+        refetch();
+      }
+    };
+    loadTags();
+  }, [logger, refetch]);
+
+  useEffect(() => {
+    if (!hasLoadedFromCache && data) {
+      const mappedTags = data.map((tag) => ({
+        value: tag.id,
+        label: tag.name,
+      }));
+      setTags(mappedTags);
+      logger.info("🌐 Loaded tags from API: ", { mappedTags, error });
+      storageService.set(STORAGE_KEYS.TAGS, JSON.stringify(mappedTags));
+    }
+  }, [data, error, logger, hasLoadedFromCache]);
+
+  // Fetch suggestions based on selected tags and location
+  const handleGetSuggestions = async () => {
+    try {
+      setLoading(true);
+      const tagIds = selectedTags.map((t) => t.value);
+
+      const fetchRestaurants = async (latitude, longitude) => {
+        const result = await foodService.getRestaurants({
+          Lat: latitude,
+          Lng: longitude,
+          tagIds,
+          pageSize: 10,
+        });
+        if (result) {
+          setSuggestions(result);
+          logger.info("handleGetSuggestions -> loaded restaurants", result);
+        }
+      };
+
+      if (!navigator.geolocation) {
+        logger.warn("Geolocation not supported, fallback to HCM default");
+        await fetchRestaurants(
+          DEFAULT_LOCATION.latitude,
+          DEFAULT_LOCATION.longitude
+        );
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          await fetchRestaurants(latitude, longitude);
+        },
+        async (err) => {
+          logger.error("Geolocation error, using fallback:", err);
+          if (err.code === 1) {
+            logger.info(
+              "User denied Geolocation - using DEFAULT_LOCATION",
+              DEFAULT_LOCATION
+            );
+            await fetchRestaurants(
+              DEFAULT_LOCATION.latitude,
+              DEFAULT_LOCATION.longitude
+            );
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    } catch (err) {
+      logger.error("handleGetSuggestions -> error", err);
+      await foodService.getRestaurants({
+        Lat: DEFAULT_LOCATION.latitude,
+        Lng: DEFAULT_LOCATION.longitude,
+        tagIds: selectedTags.map((t) => t.value),
+        pageSize: 10,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,9 +131,9 @@ export default function Search() {
         <div className="mb-4">
           <Select
             isMulti
-            options={tagsOptions}
+            options={tags}
             value={selectedTags}
-            onChange={setSelectedTags}
+            onChange={(selected) => setSelectedTags(selected || [])}
             className="text-black"
           />
         </div>
@@ -49,34 +141,41 @@ export default function Search() {
         <div className="text-center">
           <button
             onClick={handleGetSuggestions}
-            className="text-gray-200 bg-sky-500 hover:bg-sky-700 px-5 py-2 rounded-full shadow-sm transition"
+            disabled={loading}
+            className={`px-5 py-2 rounded-full shadow-sm transition ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "text-gray-200 bg-sky-500 hover:bg-sky-700"
+            }`}
           >
-            🍽️ Get Suggestions
+            {loading ? "⏳ Loading..." : "🍽️ Get Suggestions"}
           </button>
         </div>
 
-        {suggestions && (
-          <>
-            <div className="mt-8">
-              <h2 className="text-xl font-semibold mb-2">📌 Suggested Foods</h2>
-              <ul className="list-disc ml-6 space-y-1">
-                {suggestions.foodList.map((item, idx) => (
-                  <li key={idx}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">
-                🏠 Suggested Restaurants
-              </h2>
-              <ul className="list-disc ml-6 space-y-1">
-                {suggestions.restaurantList.map((item, idx) => (
-                  <li key={idx}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </>
+        {suggestions.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-2">
+              🏠 Suggested Restaurants
+            </h2>
+            <ul className="list-disc ml-6 space-y-3">
+              {suggestions.map((item, idx) => (
+                <li key={idx}>
+                  <div className="font-bold">{item.name}</div>
+                  <div className="text-sm text-gray-600">
+                    {item.address}&nbsp;&nbsp;
+                    <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
+                      {parseInt(item.rating) || 0}/10★
+                    </span>
+                  </div>
+                  {item.distance != null && (
+                    <div className="text-sm text-gray-600">
+                      {displayKmLabel(item.distance)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>
