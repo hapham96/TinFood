@@ -1,14 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { authService } from "../auth.service";
-
-let baseUrl = "http://ec2-3-234-144-21.compute-1.amazonaws.com:8080";
+let baseUrl = "https://www.cidikay.info.vn/";
 class ApiService {
     private axiosInstance: AxiosInstance;
 
     constructor(baseURL: string) {
         this.axiosInstance = axios.create({
             baseURL,
-            timeout: 10000, // default 10s
+            timeout: 20000, // default 20s
         });
 
         // Add interceptor
@@ -46,7 +45,6 @@ class ApiService {
     setBaseUrl(newBaseUrl: string) {
         baseUrl = newBaseUrl;
         this.axiosInstance = this.createAxios(baseUrl);
-        console.log("🔄 BaseURL updated to:", baseUrl);
     }
 
 

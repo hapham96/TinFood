@@ -152,13 +152,13 @@ export default function Search() {
           </button>
         </div>
 
-        {suggestions.length > 0 && (
+        {suggestions && suggestions.items?.length > 0 && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-2">
               🏠 Suggested Restaurants
             </h2>
             <ul className="list-disc ml-6 space-y-3">
-              {suggestions.map((item, idx) => (
+              {suggestions.items.map((item, idx) => (
                 <li key={idx}>
                   <div className="font-bold">{item.name}</div>
                   <div className="text-sm text-gray-600">

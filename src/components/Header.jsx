@@ -49,7 +49,7 @@ export default function Header() {
         setShowPopup(true);
         return 0;
       }
-      setTimeout(() => setTapCount(0), 2000); // reset sau 2s
+      setTimeout(() => setTapCount(0), 3000); // reset after 3s
       return newCount;
     });
   };
@@ -64,7 +64,7 @@ export default function Header() {
   };
 
   useEffect(() => {
-    // load baseUrl từ storage
+    // load baseUrl from storage
     storageService.get(STORAGE_KEYS.BASE_URL).then((saved) => {
       if (saved) {
         apiService.setBaseUrl(saved);

@@ -1,6 +1,6 @@
 import { apiService } from "./baseApi/api.service";
 
-export type Restaurant = {
+interface Restaurant {
     id: number;
     name: string;
     address: string;
@@ -9,6 +9,14 @@ export type Restaurant = {
     latitude: string;
     longitude: string;
     distance: string;
+}
+export type RestaurantResponse = {
+    items: Restaurant[];
+    pageNumber: number;
+    totalPages: number;
+    totalCount: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
 };
 interface GetRestaurantParams {
     Lat?: number;
@@ -18,7 +26,7 @@ interface GetRestaurantParams {
 }
 
 class FoodService {
-    async getRestaurants(params?: GetRestaurantParams): Promise<Restaurant[]> {
+    async getRestaurants(params?: GetRestaurantParams): Promise<RestaurantResponse[]> {
         const query = new URLSearchParams();
 
         if (params?.Lat) query.append("Lat", params.Lat.toString());
@@ -31,7 +39,7 @@ class FoodService {
 
         const url = query.toString() ? `/restaurant?${query}` : "/restaurant";
 
-        return apiService.get<Restaurant[]>(url, false);
+        return apiService.get<RestaurantResponse[]>(url, false);
     }
 
     async getTags(): Promise<string[]> {
