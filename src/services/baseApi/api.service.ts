@@ -10,20 +10,6 @@ class ApiService {
             timeout: 20000, // default 20s
         });
 
-        // Add interceptor
-        // this.axiosInstance.interceptors.request.use(async (config: any) => {
-        //   // default check token
-        //   const token = await authService.getToken();
-        //   if (!token) {
-        //     throw new Error("Unauthorized: Missing token");
-        //   }
-        //   config.headers = {
-        //     ...config.headers,
-        //     Authorization: `Bearer ${token}`,
-        //   };
-        //   return config;
-        // });
-
         this.axiosInstance.interceptors.response.use(
             (response) => response,
             (error) => {

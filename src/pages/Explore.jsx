@@ -4,16 +4,57 @@ import { useApiEffect } from "../services/baseApi/useApi";
 import { foodService } from "../services/food.service";
 import { useLogger } from "../services/logger/useLogger";
 import { displayKmLabel } from "../utils/helpers";
+import { Geolocation } from "@capacitor/geolocation";
+import { DEFAULT_LOCATION } from "../utils/constants";
 
 const Explore = () => {
   const logger = useLogger("ExplorePage");
   const [restaurants, setRestaurants] = useState([]);
   const [lastDirection, setLastDirection] = useState();
+  const [coords, setCoords] = useState(DEFAULT_LOCATION);
 
-  const { data, error, loading } = useApiEffect(() =>
-    foodService.getRestaurants()
+  // 1️⃣ Lấy quyền và vị trí user
+  useEffect(() => {
+    (async () => {
+      try {
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== "granted") {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== "granted") {
+            logger.warn("User denied location. Using DEFAULT_LOCATION");
+            setCoords(DEFAULT_LOCATION);
+            return;
+          }
+        }
+
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+
+        logger.info("Got user location", pos.coords);
+        setCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      } catch (err) {
+        logger.error("Geolocation error:", err);
+        setCoords(DEFAULT_LOCATION);
+      }
+    })();
+  }, [logger]);
+
+  // 2️⃣ Gọi API khi có toạ độ
+  const { data, error, loading } = useApiEffect(
+    () =>
+      foodService.getRestaurantSuggest({
+        Lat: coords.latitude,
+        Lng: coords.longitude,
+      }),
+    [coords.latitude, coords.longitude]
   );
 
+  // 3️⃣ Khi có dữ liệu API thì cập nhật UI
   useEffect(() => {
     if (data) {
       setRestaurants(data.items ?? []);
@@ -50,7 +91,7 @@ const Explore = () => {
         Explore Restaurants
       </h1>
 
-      {loading && <p className="text-gray-500">Loading...</p>}
+      {loading && <p className="text-gray-500">Loading nearby restaurants...</p>}
       {error && <p className="text-red-500">Error loading restaurants</p>}
 
       <div className="relative w-full max-w-md h-[500px]">

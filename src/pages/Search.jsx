@@ -7,6 +7,7 @@ import { StorageService } from "../services/storage.service";
 import { displayKmLabel } from "../utils/helpers";
 import { DEFAULT_LOCATION } from "../utils/constants";
 import { STORAGE_KEYS } from "../utils/constants";
+import { Geolocation } from "@capacitor/geolocation";
 
 export default function Search() {
   const logger = useLogger("SearchPage");
@@ -57,64 +58,50 @@ export default function Search() {
 
   // Fetch suggestions based on selected tags and location
   const handleGetSuggestions = async () => {
+    const tagIds = selectedTags.map((t) => t.value);
+
+    const fetchRestaurants = async (latitude, longitude) => {
+      const result = await foodService.getRestaurants({
+        Lat: latitude,
+        Lng: longitude,
+        cuisineIds: tagIds,
+        pageSize: 10,
+      });
+      if (result) {
+        setSuggestions(result);
+        logger.info("handleGetSuggestions -> loaded restaurants", result);
+      }
+    };
     try {
       setLoading(true);
-      const tagIds = selectedTags.map((t) => t.value);
-
-      const fetchRestaurants = async (latitude, longitude) => {
-        const result = await foodService.getRestaurants({
-          Lat: latitude,
-          Lng: longitude,
-          tagIds,
-          pageSize: 10,
-        });
-        if (result) {
-          setSuggestions(result);
-          logger.info("handleGetSuggestions -> loaded restaurants", result);
+      try {
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== "granted") {
+          const permission = await Geolocation.requestPermissions();
+          logger.info("📍 Permission result:", permission);
         }
-      };
 
-      if (!navigator.geolocation) {
-        logger.warn("Geolocation not supported, fallback to HCM default");
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+
+        const { latitude, longitude } = position.coords;
+        logger.info("Got user location (Capacitor):", { latitude, longitude });
+        await fetchRestaurants(latitude, longitude);
+      } catch (geoErr) {
+        logger.error("Geolocation error (Capacitor), fallback:", geoErr);
         await fetchRestaurants(
           DEFAULT_LOCATION.latitude,
           DEFAULT_LOCATION.longitude
         );
-        return;
       }
-
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          await fetchRestaurants(latitude, longitude);
-        },
-        async (err) => {
-          logger.error("Geolocation error, using fallback:", err);
-          if (err.code === 1) {
-            logger.info(
-              "User denied Geolocation - using DEFAULT_LOCATION",
-              DEFAULT_LOCATION
-            );
-            await fetchRestaurants(
-              DEFAULT_LOCATION.latitude,
-              DEFAULT_LOCATION.longitude
-            );
-          }
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
     } catch (err) {
       logger.error("handleGetSuggestions -> error", err);
-      await foodService.getRestaurants({
-        Lat: DEFAULT_LOCATION.latitude,
-        Lng: DEFAULT_LOCATION.longitude,
-        tagIds: selectedTags.map((t) => t.value),
-        pageSize: 10,
-      });
+      await fetchRestaurants(
+        DEFAULT_LOCATION.latitude,
+        DEFAULT_LOCATION.longitude
+      );
     } finally {
       setLoading(false);
     }
