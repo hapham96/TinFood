@@ -1,141 +1,182 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import TinderCard from "react-tinder-card";
-import { useApiEffect } from "../services/baseApi/useApi";
 import { foodService } from "../services/food.service";
 import { useLogger } from "../services/logger/useLogger";
 import { displayKmLabel } from "../utils/helpers";
 import { Geolocation } from "@capacitor/geolocation";
 import { DEFAULT_LOCATION } from "../utils/constants";
+// import { isRunningInBrowser } from "../utils/helpers";
 
 const Explore = () => {
   const logger = useLogger("ExplorePage");
-  const [restaurants, setRestaurants] = useState([]);
-  const [lastDirection, setLastDirection] = useState();
-  const [coords, setCoords] = useState(DEFAULT_LOCATION);
 
-  // 1️⃣ Lấy quyền và vị trí user
+  const [restaurants, setRestaurants] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [coords, setCoords] = useState(null);
+
+  const [lastDirection, setLastDirection] = useState();
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    (async () => {
+    const getCoordinates = async () => {
       try {
+        // if (isRunningInBrowser()) {
+        //   setCoords(DEFAULT_LOCATION);
+        //   return;
+        // }
         const perm = await Geolocation.checkPermissions();
         if (perm.location !== "granted") {
           const req = await Geolocation.requestPermissions();
           if (req.location !== "granted") {
-            logger.warn("User denied location. Using DEFAULT_LOCATION");
             setCoords(DEFAULT_LOCATION);
             return;
           }
         }
-
         const pos = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 10000,
         });
-
-        logger.info("Got user location", pos.coords);
         setCoords({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         });
       } catch (err) {
         logger.error("Geolocation error:", err);
+        setError("Could not get your location. Showing default results.");
         setCoords(DEFAULT_LOCATION);
       }
-    })();
+    };
+    getCoordinates();
   }, [logger]);
 
-  // 2️⃣ Gọi API khi có toạ độ
-  const { data, error, loading } = useApiEffect(
-    () =>
-      foodService.getRestaurantSuggest({
-        Lat: coords.latitude,
-        Lng: coords.longitude,
-      }),
-    [coords.latitude, coords.longitude]
+  const loadRestaurants = useCallback(
+    async (pageNum) => {
+      if (!hasMore || !coords) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        // API call return RestaurantResponse
+        const response = await foodService.getRestaurantSuggest({
+          lat: coords.latitude,
+          lng: coords.longitude,
+          page: pageNum,
+        });
+        // add new items in current list
+        setRestaurants((prev) => [...prev, ...response.items]);
+        setHasMore(response.hasNextPage);
+        setPage(response.pageNumber);
+        logger.info(
+          `Loaded page ${response.pageNumber}/${response.totalPages}. Has next page: ${response.hasNextPage}`
+        );
+      } catch (err) {
+        logger.error(`Error loading page ${pageNum}:`, err);
+        setError("Failed to load restaurants. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [coords, hasMore, logger]
   );
 
-  // 3️⃣ Khi có dữ liệu API thì cập nhật UI
+  // Effect to load initial restaurants
   useEffect(() => {
-    if (data) {
-      setRestaurants(data.items ?? []);
-      logger.info("getRestaurants - loaded: ", data);
+    if (coords) {
+      setRestaurants([]);
+      setPage(1);
+      setHasMore(true);
+      loadRestaurants(1);
     }
-  }, [data, logger]);
+  }, [coords, loadRestaurants]);
+
+  const onCardLeftScreen = (name, index) => {
+    logger.info(`${name} left the screen!`);
+    if (index === 0 && !loading && hasMore) {
+      logger.info("Last card swiped. Loading next page...");
+      setPage(page + 1);
+      loadRestaurants(page + 1);
+    }
+  };
 
   const swiped = (direction, name, location) => {
-    logger.info("You swiped " + direction + " on " + name);
+    logger.info(`You swiped ${direction} on ${name}`);
     setLastDirection(direction);
 
     if (direction === "right") {
       const confirmGo = window.confirm(
-        `Would you like to direct to ${name} right now?`
+        `Would you like to navigate to ${name}?`
       );
       if (confirmGo) {
-        window.open(
-          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-            location
-          )}`,
-          "_blank"
-        );
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          location
+        )}`;
+        window.open(mapsUrl, "_blank");
       }
     }
   };
 
-  const outOfFrame = (name) => {
-    logger.info(name + " left the screen");
-  };
+  const childRefs = useMemo(
+    () =>
+      Array(restaurants.length)
+        .fill(0)
+        .map(() => React.createRef()),
+    [restaurants.length]
+  );
 
   return (
-    <div className="h-screen bg-[#faf2e4] flex flex-col items-center justify-center px-4">
-      <h1 className="text-3xl font-bold mb-6 text-[#6b4f4f]">
+    <div className="h-full bg-[#faf2e4] flex flex-col items-center justify-center px-4 overflow-hidden">
+      <h1 className="text-3xl font-bold mt-4 text-[#6b4f4f]">
         Explore Restaurants
       </h1>
 
-      {loading && <p className="text-gray-500">Loading nearby restaurants...</p>}
-      {error && <p className="text-red-500">Error loading restaurants</p>}
-
-      <div className="relative w-full max-w-md h-[500px]">
-        {restaurants.map((res) => (
-          <TinderCard
-            className="absolute w-full h-full"
-            key={res.id}
-            onSwipe={(dir) => swiped(dir, res.name, res.address)}
-            onCardLeftScreen={() => outOfFrame(res.name)}
-            preventSwipe={["up", "down"]}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center justify-between h-full"
-              style={{
-                backgroundImage: `url(${res.image})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
+      <div className="relative w-full max-w-md flex-1 flex items-center justify-center mb-2">
+        {restaurants.length > 0 &&
+          restaurants.map((res, index) => (
+            <TinderCard
+              ref={childRefs[index]}
+              className="absolute w-[90vw] max-w-sm h-[70vh] max-h-[500px]"
+              key={`${res.id}-${index}`} //index
+              onSwipe={(dir) => swiped(dir, res.name, res.address)}
+              onCardLeftScreen={() => onCardLeftScreen(res.name, index)}
+              preventSwipe={["up", "down"]}
             >
-              <div className="absolute inset-0 bg-black/5 rounded-2xl"></div>
-              <div className="bg-sky-500 bg-opacity-60 text-white p-4 rounded-lg mt-auto w-full">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">{res.name}</h2>
-                  <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
-                    {parseInt(res.rating) ?? 0}/10★
-                  </span>
-                </div>
-                <p className="text-sm">{res.location}</p>
-                <div className="flex gap-2 flex-wrap mt-2">
+              <div
+                className="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center justify-between h-full"
+                style={{
+                  backgroundImage: `url(${res.imageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              >
+                <div className="absolute inset-0 bg-black/20 rounded-2xl"></div>
+                <div className="relative mt-auto w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 rounded-b-2xl">
+                  <div className="flex items-center justify-between text-white">
+                    <h2 className="text-xl font-semibold">{res.name}</h2>
+                    <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
+                      {parseInt(res.rating) ?? 0}/10★
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-200">{res.address}</p>
                   {res.distance && (
-                    <span className="bg-white text-black px-2 py-1 rounded-full text-xs">
+                    <span className="mt-2 inline-block bg-white/30 text-white px-2 py-1 rounded-full text-xs">
                       {displayKmLabel(res.distance)}
                     </span>
                   )}
                 </div>
               </div>
-            </div>
-          </TinderCard>
-        ))}
-      </div>
+            </TinderCard>
+          ))}
 
-      {lastDirection && (
-        <p className="mt-4 text-[#6b4f4f]">You swiped {lastDirection}</p>
-      )}
+        {loading && <p className="text-gray-500">⏳ Finding restaurants...</p>}
+        {error && <p className="text-red-500">⚠️ {error}</p>}
+        {!loading && !error && restaurants.length === 0 && (
+          <p className="text-gray-500">
+            {hasMore ? "No restaurants found." : "🎉 You've seen them all!"}
+          </p>
+        )}
+      </div>
     </div>
   );
 };
