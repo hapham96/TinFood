@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import Select from "react-select";
 import { useLogger } from "../services/logger/useLogger";
 import { foodService } from "../services/food.service";
-import { useApiEffect } from "../services/baseApi/useApi";
 import { StorageService } from "../services/storage.service";
 import { displayKmLabel } from "../utils/helpers";
-import { DEFAULT_LOCATION } from "../utils/constants";
-import { STORAGE_KEYS } from "../utils/constants";
+import { DEFAULT_LOCATION, STORAGE_KEYS } from "../utils/constants";
 import { Geolocation } from "@capacitor/geolocation";
 
 export default function Search() {
@@ -16,163 +14,174 @@ export default function Search() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [tags, setTags] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [hasLoadedFromCache, setHasLoadedFromCache] = useState(false);
 
-  const { data, error, refetch } = useApiEffect(() => foodService.getTags(), {
-    auto: false,
-  });
-
-  // Load tags from cache or fetch API
   useEffect(() => {
-    const loadTags = async () => {
-      try {
-        const cachedTags = await storageService.get(STORAGE_KEYS.TAGS);
-        if (cachedTags) {
-          const parsed = JSON.parse(cachedTags);
-          setTags(parsed);
-          setHasLoadedFromCache(true);
-          logger.info("✅ Loaded tags from storage", parsed);
-        } else {
-          refetch();
-        }
-      } catch (err) {
-        logger.error("loadTags error", err);
-        refetch();
+    (async () => {
+      const cached = await storageService.get(STORAGE_KEYS.TAGS);
+      if (cached) {
+        setTags(JSON.parse(cached));
+        logger.info("✅ Loaded tags from cache");
+      } else {
+        const data = await foodService.getTags();
+        const mapped = data.map((t) => ({ value: t.id, label: t.name }));
+        setTags(mapped);
+        storageService.set(STORAGE_KEYS.TAGS, JSON.stringify(mapped));
+        logger.info("🌐 Loaded tags from API");
       }
-    };
-    loadTags();
-  }, [logger, refetch]); // Added storageService to dependency array
+    })();
+  }, []);
 
-  useEffect(() => {
-    if (!hasLoadedFromCache && data) {
-      const mappedTags = data.map((tag) => ({
-        value: tag.id,
-        label: tag.name,
-      }));
-      setTags(mappedTags);
-      logger.info("🌐 Loaded tags from API: ", { mappedTags, error });
-      storageService.set(STORAGE_KEYS.TAGS, JSON.stringify(mappedTags));
-    }
-  }, [data, error, logger, hasLoadedFromCache]); // Added storageService to dependency array
-
-  /**
-   * REFACTORED: Fetch suggestions based on selected tags and location.
-   * This version ensures lat/lng are determined first, then calls the API once.
-   */
-  const handleGetSuggestions = async () => {
+  const handleGetSuggestions = async (loadMore = false) => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
     setLoading(true);
-    setSuggestions([]); // Clear previous suggestions
-
     const tagIds = selectedTags.map((t) => t.value);
-
-    // Step 1: Determine the location to use (user's or default)
     let locationToUse = { ...DEFAULT_LOCATION };
 
     try {
-      const permStatus = await Geolocation.checkPermissions();
-      if (permStatus.location !== "granted") {
-        const requestStatus = await Geolocation.requestPermissions();
-        if (requestStatus.location !== "granted") {
-          throw new Error("Location permission denied.");
-        }
+      const perm = await Geolocation.requestPermissions();
+      if (perm.location === "granted") {
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+        locationToUse = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
       }
-
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-      });
-
-      locationToUse = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      logger.info("📍 Got user location (Capacitor):", locationToUse);
-    } catch (geoErr) {
-      logger.error("Geolocation error (Capacitor), falling back to default.", geoErr);
-      // locationToUse already holds the default values, so we just log the error.
+    } catch (err) {
+      logger.warn("📍 Geolocation error", err);
     }
 
-    // Step 2: Call the API with the determined location
     try {
-      const req = {
+      if (!loadMore) {
+        // reset if submit suggest again
+        setSuggestions([]);
+        setPage(1);
+        setHasMore(false);
+      }
+      const request = {
         lat: locationToUse.latitude,
         lng: locationToUse.longitude,
         cuisineIds: tagIds,
         pageSize: 10,
+        page: loadMore ? page + 1 : 1,
       };
-      logger.info("📡 Calling getRestaurants with request:", req);
-      const result = await foodService.getRestaurants(req);
-      if (result) {
-        setSuggestions(result);
-        logger.info("🍽️ Loaded restaurants successfully", result);
+      const result = await foodService.getRestaurants(request);
+      logger.info("🌐 Fetched suggestions from API: ", {
+        request,
+        result,
+      });
+      if (result?.items) {
+        setSuggestions((prev) =>
+          loadMore ? [...prev, ...result.items] : result.items
+        );
+        setPage(result.pageNumber);
+        setHasMore(result.hasNextPage);
       }
-    } catch (apiErr) {
-      logger.error("API call to getRestaurants failed", apiErr);
-      // Optionally set an error state to show a message to the user
+    } catch (err) {
+      logger.error("API error", err);
+      setSuggestions([]);
+      setPage(1);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
+      if (nearBottom && !loading && hasMore) {
+        logger.info("⬇️ Reached bottom → load more");
+        handleGetSuggestions(true);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasMore]);
+
   return (
-    <div className="min-h-screen border-gray-200 font-vintage px-6 py-10">
+    <div className="min-h-screen px-6 py-10">
       <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-md p-6">
-        <h1 className="text-2xl font-bold mb-6 text-center caret-pink-500">
+        <h1 className="text-2xl font-bold mb-6 text-center">
           🥄 Food Recommender
         </h1>
 
-        <label className="block mb-2 text-lg">Select your favorite tags:</label>
-        <div className="mb-4">
-          <Select
-            isMulti
-            options={tags}
-            value={selectedTags}
-            onChange={(selected) => setSelectedTags(selected || [])}
-            className="text-black"
-          />
-        </div>
+        <Select
+          isMulti
+          options={tags}
+          value={selectedTags}
+          onChange={(selected) => setSelectedTags(selected || [])}
+        />
 
-        <div className="text-center">
+        <div className="text-center mt-3 mb-3">
           <button
-            onClick={handleGetSuggestions}
-            disabled={loading || selectedTags.length === 0} // Disable if no tags are selected
-            className={`px-5 py-2 rounded-full shadow-sm transition ${
+            onClick={() => handleGetSuggestions(false)}
+            disabled={loading || selectedTags.length === 0}
+            className={`px-5 py-2 rounded-full ${
               loading || selectedTags.length === 0
-                ? "bg-gray-400 cursor-not-allowed"
-                : "text-gray-200 bg-sky-500 hover:bg-sky-700"
+                ? "bg-gray-400"
+                : "bg-sky-500 text-white hover:bg-sky-700"
             }`}
           >
             {loading ? "⏳ Loading..." : "🍽️ Get Suggestions"}
           </button>
         </div>
+        {/* suggest result */}
+        <div
+          className="overflow-y-auto"
+          style={{ maxHeight: "60vh" }}
+          onScroll={(e) => {
+            const target = e.target;
+            const nearBottom =
+              target.scrollTop + target.clientHeight >=
+              target.scrollHeight - 200;
 
-        {/* Display suggestions */}
-        {suggestions?.items?.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">
-              🏠 Suggested Restaurants
-            </h2>
-            <ul className="list-disc ml-6 space-y-3">
-              {suggestions.items.map((item) => (
-                <li key={item.id}> {/* Use a unique ID from the item for the key */}
-                  <div className="font-bold">{item.name}</div>
-                  <div className="text-sm text-gray-600">
-                    {item.address}&nbsp;&nbsp;
-                    <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
-                      {parseInt(item.rating, 10) || 0}/10★
-                    </span>
-                  </div>
-                  {item.distance != null && (
+            if (nearBottom && !loading && hasMore) {
+              logger.info("⬇️ Reached bottom → load more");
+              handleGetSuggestions(true);
+            }
+          }}
+        >
+          {suggestions.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">
+                🏠 Suggested Restaurants
+              </h2>
+              <ul className="list-disc ml-6 space-y-3">
+                {suggestions.map((item) => (
+                  <li key={item.id}>
+                    <div className="font-bold">{item.name}</div>
                     <div className="text-sm text-gray-600">
-                      {displayKmLabel(item.distance)}
+                      {item.address}&nbsp;
+                      <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">
+                        {parseInt(item.rating, 10) || 0}/10★
+                      </span>
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                    {item.distance != null && (
+                      <div className="text-sm text-gray-600">
+                        {displayKmLabel(item.distance)}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {loading && (
+                <p className="text-center mt-4 text-gray-500">
+                  ⏳ Loading more results...
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

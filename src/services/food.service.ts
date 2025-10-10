@@ -43,7 +43,7 @@ class FoodService {
         if (params?.lat) query.append("Lat", params.lat.toString());
         if (params?.lng) query.append("Lng", params.lng.toString());
         if (params?.pageSize) query.append("pageSize", params.pageSize.toString());
-        if (params?.page) query.append("page", params.page.toString());
+        if (params?.page) query.append("pageNumber", params.page.toString());
         if (params?.cuisineIds) {
             params.cuisineIds.forEach((id) => query.append("cuisineIds", id));
         }
