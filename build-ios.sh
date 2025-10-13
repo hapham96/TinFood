@@ -1,37 +1,22 @@
 #!/bin/bash
 set -e
 
-APP_NAME="tinfood"
-DATE=$(date +"%b%d_%H%M") # ex Oct06_1420
-OUTPUT_DIR="../build-ios"
-IPA_NAME="${APP_NAME}_${DATE}.ipa"
+echo "📦 Building iOS app for normal development run..."
 
-echo "🚀 Building Vite project..."
+# 1️⃣ Build web assets (Vite)
+echo "🚀 Building frontend..."
 npm run build
 
-echo "📦 Copying build to iOS folder..."
-npx cap copy ios
-
-echo "🧹 Syncing Capacitor..."
+# 2️⃣ Sync with Capacitor iOS project
+echo "🔄 Syncing with Capacitor iOS project..."
 npx cap sync ios
 
-# Ensure build output directory exists
-mkdir -p $OUTPUT_DIR
+# 3️⃣ Optionally clean DerivedData (avoid stale cache)
+echo "🧹 Cleaning old DerivedData cache..."
+rm -rf ~/Library/Developer/Xcode/DerivedData/* || true
 
-# Build iOS app using Xcode command line
-echo "🛠️ Building IPA..."
-xcodebuild \
-  -workspace ios/App/App.xcworkspace \
-  -scheme App \
-  -configuration Release \
-  -archivePath $OUTPUT_DIR/${APP_NAME}.xcarchive \
-  archive
+# 4️⃣ Open the project in Xcode
+echo "🧰 Opening Xcode..."
+npx cap open ios
 
-# Export IPA (you can adjust export options)
-xcodebuild \
-  -exportArchive \
-  -archivePath $OUTPUT_DIR/${APP_NAME}.xcarchive \
-  -exportPath $OUTPUT_DIR \
-  -exportOptionsPlist ios/exportOptions.plist
-
-echo "✅ iOS build completed: $OUTPUT_DIR/${IPA_NAME}"
+echo "✅ Done! You can now select a device or simulator in Xcode and click ▶️ Run."

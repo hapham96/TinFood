@@ -73,7 +73,12 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="w-full bg-white shadow-md px-6 py-3 flex items-center justify-between">
+    <header
+      className="w-full bg-white shadow-md px-6 py-3 flex items-center justify-between"
+      style={{
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+      }}
+    >
       {/* Left: Logo */}
       <div className="text-2xl font-bold text-sky-500" onClick={handleTapLogo}>
         TinFood
