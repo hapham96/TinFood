@@ -17,7 +17,7 @@ export default function BottomTabBar() {
           end={item.to === "/"}
           className={({ isActive }) =>
             `flex flex-col items-center text-sm ${
-              isActive ? "text-sky-500 font-semibold" : "text-gray-700"
+              isActive ? "color-primary font-semibold" : "text-gray-700"
             }`
           }
         >

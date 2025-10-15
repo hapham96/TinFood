@@ -129,7 +129,7 @@ export default function Search() {
             className={`px-5 py-2 rounded-full ${
               loading || selectedTags.length === 0
                 ? "bg-gray-400"
-                : "bg-sky-500 text-white hover:bg-sky-700"
+                : "bg-primary text-white hover:bg-primary"
             }`}
           >
             {loading ? "⏳ Loading..." : "🍽️ Get Suggestions"}

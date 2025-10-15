@@ -28,7 +28,7 @@ export default function SignUp() {
   return (
     <div className="flex items-center justify-center px-6 py-10">
       <div className="shadow-md rounded-lg p-6 w-96 bg-gray-50">
-        <h2 className="text-2xl font-bold text-center text-sky-600 mb-6">
+        <h2 className="text-2xl font-bold text-center color-primary mb-6">
           Sign Up
         </h2>
 
@@ -101,7 +101,7 @@ export default function SignUp() {
           </button>
         </form>
 
-        <div className="text-center mt-4 text-sm text-sky-600">
+        <div className="text-center mt-4 text-sm color-primary">
           <button
             onClick={() => navigate("/login")}
             className="hover:underline"

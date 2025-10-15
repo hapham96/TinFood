@@ -24,7 +24,7 @@ export default function Login() {
   return (
     <div className="flex items-center justify-center px-6 py-10">
       <div className="shadow-md rounded-lg p-6 w-96 bg-gray-50">
-        <h2 className="text-2xl font-bold text-center text-sky-600 mb-6">
+        <h2 className="text-2xl font-bold text-center color-primary mb-6">
           Login
         </h2>
 
@@ -62,7 +62,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="flex justify-between mt-4 text-sm text-sky-600">
+        <div className="flex justify-between mt-4 text-sm color-primary">
           <button
             onClick={() => alert("Forgot password clicked")}
             className="hover:underline"

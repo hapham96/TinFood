@@ -80,7 +80,7 @@ export default function Header() {
       }}
     >
       {/* Left: Logo */}
-      <div className="text-2xl font-bold text-sky-500" onClick={handleTapLogo}>
+      <div className="text-2xl font-bold color-primary" onClick={handleTapLogo}>
         TinFood
       </div>
 
@@ -89,7 +89,7 @@ export default function Header() {
         {!isAuth ? (
           <button
             onClick={handleLogin}
-            className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 color-primary text-white rounded-lg hover:bg-blue-700"
           >
             Login / Sign Up
           </button>
@@ -154,7 +154,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={handleSaveBaseUrl}
-                  className="px-4 py-2 rounded bg-sky-500 text-white"
+                  className="px-4 py-2 rounded bg-primary text-white"
                 >
                   Save
                 </button>
