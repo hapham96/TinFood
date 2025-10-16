@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "../styles/MoneyShare.css";
+import { StorageService } from "../services/storage.service";
 
 export default function App() {
+  const storageService = new StorageService();
   const [people, setPeople] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [name, setName] = useState("");
@@ -76,26 +78,59 @@ export default function App() {
     setShowPopup(true);
   };
 
+  // 🔹 Save to localStorage
+  const handleSaveResult = () => {
+    const saved = JSON.parse(storageService.get("split_results") || "[]");
+    const result = {
+      id: Date.now(),
+      date: new Date().toLocaleString(),
+      balances,
+      total,
+      average,
+    };
+    storageService.set("split_results", JSON.stringify([...saved, result]));
+    alert("💾 Saved successfully! You can view it later.");
+  };
+
+  // 🔹 Copy to clipboard
+  const handleCopyResult = () => {
+    const text = Object.entries(balances)
+      .map(([person, balance]) => {
+        if (balance > 0)
+          return `${person}: Receive (+${balance.toLocaleString()} ₫)`;
+        if (balance < 0)
+          return `${person}: Pay (-${Math.abs(balance).toLocaleString()} ₫)`;
+        return `${person}: Nothing todo`;
+      })
+      .join("\n");
+
+    const summary = `💸 Bill Split Result\nTotal: ${total.toLocaleString()} ₫\nAverage: ${average.toLocaleString()} ₫\n\n${text}`;
+    navigator.clipboard.writeText(summary);
+    alert("📋 Result copied to clipboard!");
+  };
+
   return (
     <div className="app-container">
       <div className="header-bar">
         <h1 className="title">Share Bill</h1>
         <button className="calc-btn" onClick={calculateBalances}>
-          🧮 Calculator
+          Calculator Bill
         </button>
       </div>
 
       {/* 👥 People Section */}
       <div className="section">
         <h2>👥 Participants</h2>
-        <div className="input-group">
+        <div className="input-group mb-3">
           <input
             type="text"
             placeholder="Enter name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <button onClick={addPerson}>Add</button>
+          <button className="circle-btn" onClick={addPerson}>
+            +
+          </button>
         </div>
 
         <ul className="people-list">
@@ -137,7 +172,9 @@ export default function App() {
               </option>
             ))}
           </select>
-          <button onClick={addExpense}>Add</button>
+          <button className="circle-btn" onClick={addExpense}>
+            +
+          </button>
         </div>
 
         {expenses.length > 0 && (
@@ -186,7 +223,7 @@ export default function App() {
       {showPopup && (
         <div className="modal-backdrop" onClick={() => setShowPopup(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>💸 Build Split Result</h3>
+            <h3>💸 Bill Split Result</h3>
             <ul>
               {Object.entries(balances).map(([person, balance]) => (
                 <li key={person}>
@@ -199,9 +236,18 @@ export default function App() {
                 </li>
               ))}
             </ul>
-            <button className="close-btn" onClick={() => setShowPopup(false)}>
-              Close
-            </button>
+
+            <div className="modal-actions">
+              <button className="save-btn" onClick={handleSaveResult}>
+                💾 Save
+              </button>
+              <button className="copy-btn" onClick={handleCopyResult}>
+                📋 Copy
+              </button>
+              <button className="close-btn" onClick={() => setShowPopup(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
