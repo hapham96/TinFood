@@ -6,7 +6,8 @@ import Explore from "./pages/Explore";
 import Favorite from "./pages/Favorite";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
-
+import FloatingButton from "./components/FloatingButton";
+import MoneyShare from "./pages/MoneyShare";
 export default function App() {
   return (
     <Router>
@@ -20,9 +21,10 @@ export default function App() {
             <Route path="/favorite" element={<Favorite />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/money-share" element={<MoneyShare />} />
           </Routes>
         </main>
-
+        {/* <FloatingButton /> */}
         <BottomTabBar />
       </div>
     </Router>

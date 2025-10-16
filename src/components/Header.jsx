@@ -89,7 +89,7 @@ export default function Header() {
         {!isAuth ? (
           <button
             onClick={handleLogin}
-            className="px-4 py-2 color-primary text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 text-white rounded-lg bg-primary"
           >
             Login / Sign Up
           </button>
