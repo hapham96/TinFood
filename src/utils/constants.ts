@@ -7,5 +7,6 @@ export const DEFAULT_LOCATION = {
 export const STORAGE_KEYS = {
     BASE_URL: "BASE_URL",
     TAGS: "TAGS",
-    TOKEN_KEY: "TOKEN_KEY"
+    TOKEN_KEY: "TOKEN_KEY",
+    MONEY_BILLS: "MONEY_BILLS"
 }

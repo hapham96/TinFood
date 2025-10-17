@@ -17,7 +17,7 @@ const tabItems = [
 
 export default function BottomTabBar() {
   return (
-    <nav className="absolute bottom-0 left-0 right-0 bg-transparent border-t border-gray-200 flex justify-around items-center h-18 pb-safe">
+    <nav className="absolute bottom-0 left-0 right-0 bottom-bar border-t border-gray-200 flex justify-around items-center h-18 pb-safe">
       {tabItems.map(({ label, icon: Icon, to }) => (
         <NavLink
           key={to}

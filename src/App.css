@@ -1,5 +1,4 @@
-
-.color-primary{
+.color-primary {
   color: #c14564 !important;
 }
 
@@ -51,4 +50,8 @@ button {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-bar {
+  background: white;
+  padding-top: 2rem;
 }
