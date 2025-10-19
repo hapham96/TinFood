@@ -1,17 +1,11 @@
+/* eslint-disable no-unused-vars */
 import { NavLink } from "react-router-dom";
-import {
-  FaHome,
-  FaChartLine,
-  FaShareAlt,
-  FaMapMarkerAlt,
-  FaCog,
-} from "react-icons/fa";
-import { FaSearch, FaCompass, FaHeart } from "react-icons/fa";
+import { FaSearch, FaCompass, FaHeart, FaShareAlt } from "react-icons/fa";
 
 const tabItems = [
   { label: "Search", icon: FaSearch, to: "/" },
   { label: "Explore", icon: FaCompass, to: "/explore" },
-  { label: "ShareMoney", icon: FaShareAlt, to: "/money-share" },
+  { label: "ShareMoney", icon: FaShareAlt, to: "/bill-records" },
   { label: "Favorite", icon: FaHeart, to: "/favorite" },
 ];
 

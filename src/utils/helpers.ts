@@ -9,3 +9,11 @@ export function displayKmLabel(num: number) {
 };
 
 export const isRunningInBrowser = () => typeof window !== 'undefined';
+
+export function sleep(ms: number = 1000) {
+    return new Promise((resolve) =>
+        setTimeout(() => {
+            resolve(ms);
+        }, Math.abs(ms))
+    );
+}

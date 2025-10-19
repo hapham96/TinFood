@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "../utils/constants";
 import { StorageService } from "./storage.service";
+import { apiService } from "./baseApi/api.service";
 
 // type of money bill
 export const MoneyBillType = {
@@ -21,6 +22,7 @@ export class MoneyBill {
     name?: string; // name of bill
     address?: string; // địa chỉ
     date?: string; // ngày giờ
+
     private storage: StorageService;
 
     constructor(init?: Partial<MoneyBill>) {
@@ -91,7 +93,7 @@ export class MoneyBill {
             this.expenses.forEach((e) => {
                 const qty = Number(e.quantity || 1);
                 const finalAmount = Math.round(e.amount * qty * this.discountRatio);
-                result[e.name] = finalAmount/(e.quantity || 1); // key = tên món ăn
+                result[e.name] = finalAmount / (e.quantity || 1); // key = tên món ăn
             });
         }
 
@@ -102,17 +104,15 @@ export class MoneyBill {
     async saveMoneyBill(bill: MoneyBill, balances?: Record<string, number>): Promise<void> {
         try {
             let savedList = await this.getMoneyBills();
-            console.log("Loaded savedList:", savedList);
             if (!Array.isArray(savedList)) {
                 savedList = [];
             }
-            console.log("Loaded savedList: 2", savedList);
             const record = new MoneyBill({
                 ...bill,
                 id: bill.id || Date.now(),
             });
+            console.log("Loaded savedList:", savedList);
             record.date = new Date().toLocaleString();
-
             // if record with same id exists, update it
             const existingIndex = savedList.findIndex((x) => x.id === record.id);
             if (existingIndex >= 0) {
@@ -156,5 +156,24 @@ export class MoneyBill {
         if (index === -1) throw new Error("Record not found");
         savedList[index] = updated;
         await storageService.set(STORAGE_KEYS.MONEY_BILLS, savedList);
+    }
+
+    async deleteMoneyBill(id: number) {
+        try {
+            let savedList = await this.getMoneyBills();
+            savedList = savedList.filter(b => b.id.toString() !== id.toString());
+            await this.storage.set(STORAGE_KEYS.MONEY_BILLS, JSON.stringify(savedList));
+            return true;
+        } catch (error) {
+            console.error("❌ Failed to delete bill:", error);
+            return false;
+        }
+    }
+
+    // decode bill from img
+    async decodeBillInfo(base64String: string): Promise<string[]> {
+        return apiService.post("/bill", { Base64Url: base64String }, false, {
+            headers: { "Content-Type": "application/json" },
+        });
     }
 }

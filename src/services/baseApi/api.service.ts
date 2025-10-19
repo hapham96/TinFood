@@ -8,6 +8,8 @@ class ApiService {
         this.axiosInstance = axios.create({
             baseURL,
             timeout: 20000, // default 20s
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
         });
 
         this.axiosInstance.interceptors.response.use(

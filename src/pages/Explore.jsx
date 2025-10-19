@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import TinderCard from "react-tinder-card";
 import { foodService } from "../services/food.service";
