@@ -7,6 +7,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { cameraService } from "../services/camera.service";
 import { useLogger } from "../services/logger/useLogger";
 import { sleep } from "../utils/helpers";
+import ModeTabs from "../components/ModeTabs.jsx";
+
 export default function MoneyShare() {
   const logger = useLogger("MoneySharePage");
   const navigate = useNavigate();
@@ -195,37 +197,12 @@ export default function MoneyShare() {
 
   return (
     <div className="app-container">
-      {/* 🔝 Top bar */}
-      <div className="top-bar flex flex-wrap items-center justify-center gap-3 p-3">
-        {/* Mode Toggle */}
-        <div className="flex gap-2">
-          <button
-            className={`px-4 py-2 rounded-xl font-medium transition ${
-              bill.type === MoneyBillType.NORMAL
-                ? "bg-yellow-300 text-yellow-900 shadow-inner"
-                : "bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
-            }`}
-            onClick={() =>
-              setBill(new MoneyBill({ ...bill, type: MoneyBillType.NORMAL }))
-            }
-            disabled={!!id}
-          >
-            ⚖️ Normal
-          </button>
-          <button
-            className={`px-4 py-2 rounded-xl font-medium transition ${
-              bill.type === MoneyBillType.FOOD
-                ? "bg-amber-300 text-amber-900 shadow-inner"
-                : "bg-amber-100 hover:bg-amber-200 text-amber-800"
-            }`}
-            onClick={() =>
-              setBill(new MoneyBill({ ...bill, type: MoneyBillType.FOOD }))
-            }
-            disabled={!!id}
-          >
-            🍱 Food
-          </button>
-        </div>
+      <div style={{ margin: "11px", fontSize: "14px" }}>
+        <ModeTabs
+          disabled={!!id}
+          value={bill.type}
+          onChange={(mode) => setBill(new MoneyBill({ ...bill, type: mode }))}
+        />
       </div>
 
       {/* 🧾 Header section */}
@@ -343,7 +320,7 @@ export default function MoneyShare() {
                 }
               />
             </div>
-            <div className="flex justify-start items-center">
+            <div className="flex justify-start items-center mt-2">
               <span>Ship Fee </span>
               <input
                 className="ml-2"

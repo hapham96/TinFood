@@ -409,7 +409,6 @@
 .extra-inputs input {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid #d4d4d4;

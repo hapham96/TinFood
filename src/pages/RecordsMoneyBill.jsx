@@ -28,7 +28,7 @@ export default function RecordsMoneyBill() {
   }, []);
 
   return (
-      <div className="flex flex-col p-4" style={{ height: "86vh" }}>
+    <div className="flex flex-col p-4" style={{ height: "86vh" }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <h2 className="text-xl font-bold color-primary">Saved Bills</h2>
@@ -44,6 +44,12 @@ export default function RecordsMoneyBill() {
       {records.length === 0 ? (
         <div className="p-4 text-center text-gray-500 flex-1 overflow-y-auto">
           No saved bills yet.
+          <button
+            onClick={addNewBill}
+            className="circle-btn flex items-center justify-center"
+          >
+            + Add Bill
+          </button>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
