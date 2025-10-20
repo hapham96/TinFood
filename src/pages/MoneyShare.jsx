@@ -8,6 +8,7 @@ import { cameraService } from "../services/camera.service";
 import { useLogger } from "../services/logger/useLogger";
 import { sleep } from "../utils/helpers";
 import ModeTabs from "../components/ModeTabs.jsx";
+import AddExpensePopup from "./AddExpensePopup.jsx";
 
 export default function MoneyShare() {
   const logger = useLogger("MoneySharePage");
@@ -19,17 +20,13 @@ export default function MoneyShare() {
   const [balances, setBalances] = useState({});
   const [showPopup, setShowPopup] = useState(false);
   const [tempName, setTempName] = useState("");
-  const [tempItem, setTempItem] = useState("");
-  const [tempAmount, setTempAmount] = useState("");
-  const [tempQty, setTempQty] = useState("");
-  const [tempPayer, setTempPayer] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [billName, setBillName] = useState("");
   const [billAddress, setBillAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [confirmData, setConfirmData] = useState(null);
-
+  const [showAddExpense, setShowAddExpense] = useState(false);
   const handleScanBill = async () => {
     try {
       const base64Url = await cameraService.selectOrCaptureImage();
@@ -112,40 +109,6 @@ export default function MoneyShare() {
     );
   };
 
-  // ➕ Add expense
-  const addExpense = () => {
-    if (!tempItem || !tempAmount)
-      return alert("Please fill item name & amount");
-    if (bill.type === MoneyBillType.NORMAL && !tempPayer)
-      return alert("Please select payer");
-
-    const newExpense =
-      bill.type === MoneyBillType.FOOD
-        ? {
-            name: tempItem,
-            amount: Number(tempAmount),
-            quantity: Number(tempQty) || 1,
-          }
-        : {
-            name: tempItem,
-            amount: Number(tempAmount),
-            paidBy: tempPayer,
-            quantity: 1,
-          };
-
-    setBill(
-      new MoneyBill({
-        ...bill,
-        expenses: [...bill.expenses, newExpense],
-      })
-    );
-
-    setTempItem("");
-    setTempAmount("");
-    setTempPayer("");
-    setTempQty("");
-  };
-
   const removeExpense = (i) => {
     const newExp = [...bill.expenses];
     newExp.splice(i, 1);
@@ -195,6 +158,16 @@ export default function MoneyShare() {
     alert("📋 Result copied!");
   };
 
+  const handleAddExpense = () => {
+    if (
+      bill.type === MoneyBillType.NORMAL &&
+      (!bill.participants || bill.participants.length === 0)
+    ) {
+      return alert("⚠️ Please add at least one participant before adding an expense.");
+    }
+    setShowAddExpense(true);
+  }
+
   return (
     <div className="app-container">
       <div style={{ margin: "11px", fontSize: "14px" }}>
@@ -207,29 +180,27 @@ export default function MoneyShare() {
 
       {/* 🧾 Header section */}
       <div className="header-bar">
-        <h1 className="title">
-          Share Bill
-          {id && <p className="edit-hint">📝 Editing saved bill</p>}
-        </h1>
-
+        <button
+          onClick={() => navigate("/bill-records")}
+          className="bg-[#c14564] text-white px-3 py-2 rounded-full shadow-md hover:bg-[#a83853] transition z-50"
+        >
+          ←
+        </button>
         <button className="calc-btn" onClick={calculateBalances}>
           Calculate
         </button>
       </div>
+      <h1 className="text-2xl font-semibold mb-4 text-center color-primary">
+        {bill?.name ? bill.name : "Share Bill"}
+      </h1>
       <div className="px-4">
-        <button
-          onClick={() => navigate("/bill-records")}
-          className="px-2 py-2 font-medium text-indigo-900 shadow-sm transition  rounded-xl mr-2"
-        >
-          💾 View Saved Bills
-        </button>
         {bill.type === MoneyBillType.FOOD && !id && (
           <button
             onClick={handleScanBill}
             disabled={isScanning}
             className={`px-2 py-2 font-medium text-indigo-900 shadow-sm transition rounded-xl`}
           >
-            {isScanning ? "🔍 Scanning..." : "📸 Scan Bill"}
+            {isScanning ? "🔍 Scanning..." : "🔍 Scan Bill AI"}
           </button>
         )}
       </div>
@@ -247,8 +218,14 @@ export default function MoneyShare() {
               +
             </button>
           </div>
+          {!bill?.participants?.length && (
+            <p className="text-sm text-gray-500 text-italic">
+              No participants added yet. Please add at least one before creating
+              an expense.
+            </p>
+          )}
           <ul className="people-list">
-            {bill.participants?.map((p, i) => (
+            {bill?.participants?.map((p, i) => (
               <li key={i}>
                 {p}
                 <button onClick={() => removePerson(p)}>✕</button>
@@ -259,87 +236,22 @@ export default function MoneyShare() {
       )}
 
       <div className="section">
-        <h2>💰 Expenses</h2>
-        <div className="input-group">
-          <input
-            type="text"
-            placeholder="Item"
-            value={tempItem}
-            onChange={(e) => setTempItem(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Amount"
-            value={tempAmount}
-            onChange={(e) => setTempAmount(e.target.value)}
-          />
-          {bill.type === MoneyBillType.FOOD && (
-            <input
-              type="number"
-              placeholder="Qty (default 1)"
-              value={tempQty}
-              min="1"
-              onChange={(e) => setTempQty(e.target.value)}
-              className="qty-input"
-            />
-          )}
-          {bill.type === MoneyBillType.NORMAL && (
-            <select
-              value={tempPayer}
-              onChange={(e) => setTempPayer(e.target.value)}
-            >
-              <option value="">Select payer</option>
-              {bill.participants?.map((p, i) => (
-                <option key={i} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          )}
-          <button className="circle-btn" onClick={addExpense}>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-[#4b2e19]">💰 Expenses</h2>
+          <button
+            className="circle-btn flex items-center"
+            onClick={handleAddExpense}
+          >
             +
           </button>
         </div>
-
-        {bill.type === MoneyBillType.FOOD && (
-          <div className="extra-inputs mt-3">
-            <div className="flex justify-start items-center">
-              <span>Discount </span>
-              <input
-                className="ml-2"
-                type="number"
-                placeholder="Discount amount"
-                value={bill.discountAmount || ""}
-                onChange={(e) =>
-                  setBill(
-                    new MoneyBill({
-                      ...bill,
-                      discountAmount: Number(e.target.value),
-                    })
-                  )
-                }
-              />
-            </div>
-            <div className="flex justify-start items-center mt-2">
-              <span>Ship Fee </span>
-              <input
-                className="ml-2"
-                type="number"
-                placeholder="Ship amount"
-                value={bill.shipAmount || ""}
-                onChange={(e) =>
-                  setBill(
-                    new MoneyBill({
-                      ...bill,
-                      shipAmount: Number(e.target.value),
-                    })
-                  )
-                }
-              />
-            </div>
-          </div>
+        {!bill?.expenses?.length && (
+          <p className="text-sm text-gray-500 text-italic">
+            {bill.type === MoneyBillType.FOOD
+              ? "No expenses added yet. You can add them manually using the + button or automatically by scanning a real bill with AI."
+              : "No expenses added yet. You can add them manually using the + button"}
+          </p>
         )}
-
         {bill.expenses.length > 0 && (
           <table className="expense-table">
             <thead>
@@ -354,7 +266,9 @@ export default function MoneyShare() {
             <tbody>
               {bill.expenses.map((e, i) => (
                 <tr key={i}>
-                  <td>{e.name}</td>
+                  <td>
+                    {e.name} <br/>{new Date(e.createdAt).toLocaleString()}
+                  </td>
                   <td>{e.amount.toLocaleString()}</td>
                   {bill.type === MoneyBillType.FOOD && (
                     <td>{e.quantity || 1}</td>
@@ -369,24 +283,86 @@ export default function MoneyShare() {
           </table>
         )}
       </div>
+      {bill.type === MoneyBillType.FOOD && (
+        <div className="section">
+          <h2>Adding bill info </h2>
+          {bill.type === MoneyBillType.FOOD && (
+            <div className="extra-inputs mt-3">
+              <div className="flex justify-start items-center">
+                <span>Discount</span>
+                <input
+                  className="ml-2"
+                  type="number"
+                  placeholder="Discount amount"
+                  value={bill.discountAmount || ""}
+                  onChange={(e) =>
+                    setBill(
+                      new MoneyBill({
+                        ...bill,
+                        discountAmount: Number(e.target.value),
+                      })
+                    )
+                  }
+                />
+              </div>
+              <div className="flex justify-start items-center mt-2">
+                <span>Ship Fee </span>
+                <input
+                  className="ml-2"
+                  type="number"
+                  placeholder="Ship amount"
+                  value={bill.shipAmount || ""}
+                  onChange={(e) =>
+                    setBill(
+                      new MoneyBill({
+                        ...bill,
+                        shipAmount: Number(e.target.value),
+                      })
+                    )
+                  }
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className="summary">
-        {bill.type === MoneyBillType.FOOD && (
+      {bill.expenses?.length > 0 && (
+        <div className="summary">
+          {bill.type === MoneyBillType.FOOD && (
+            <p>
+              <strong>Total:</strong> {bill.totalAmountAll.toLocaleString()} ₫
+            </p>
+          )}
           <p>
-            <strong>Total:</strong> {bill.totalAmountAll.toLocaleString()} ₫
+            <strong>Total After Discount:</strong>{" "}
+            {bill.totalAfterDiscount.toLocaleString()} ₫
           </p>
-        )}
-        <p>
-          <strong>Total After Discount:</strong>{" "}
-          {bill.totalAfterDiscount.toLocaleString()} ₫
-        </p>
-        {bill.type === MoneyBillType.NORMAL && (
-          <p>
-            <strong>Average per person:</strong>{" "}
-            {bill.averageAmount?.toLocaleString()} ₫
-          </p>
-        )}
-      </div>
+          {bill.type === MoneyBillType.NORMAL && (
+            <p>
+              <strong>Average per person:</strong>{" "}
+              {bill.averageAmount?.toLocaleString()} ₫
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Popup Add Expense */}
+      {showAddExpense && (
+        <AddExpensePopup
+          type={bill.type}
+          participants={bill.participants}
+          onClose={() => setShowAddExpense(false)}
+          onSave={(expense) =>
+            setBill(
+              new MoneyBill({
+                ...bill,
+                expenses: [...bill.expenses, expense],
+              })
+            )
+          }
+        />
+      )}
 
       {showPopup && (
         <div

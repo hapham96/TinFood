@@ -16,6 +16,7 @@ export class MoneyBill {
         amount: number; // tiền món ăn (giá gốc chưa giảm), dịch vụ
         paidBy?: string // nếu type là FOOD thì ko bắt buộc nhập - nếu nhập là món ăn của ng đó
         quantity?: number; // số lượng món ăn (mặc định 1) nếu type là Normal ko bắt buộc nhập -
+        createdAt?: string;
     }[];
     discountAmount?: number; // tiền coupon giảm giá được áp dụng cho tổng hóa đơn
     shipAmount?: number; // tiền ship
@@ -75,6 +76,7 @@ export class MoneyBill {
 
         if (this.type === MoneyBillType.NORMAL) {
             if (!this.participants?.length) throw new Error("No participants");
+            if (!this.expenses?.length) throw new Error("No expenses");
 
             const payments: Record<string, number> = {};
             this.participants.forEach((p) => (payments[p] = 0));
@@ -89,6 +91,7 @@ export class MoneyBill {
                 result[p] = Math.round(payments[p] - this.averageAmount);
             });
         } else if (this.type === MoneyBillType.FOOD) {
+             if (!this.expenses?.length) throw new Error("No expenses");
             // FOOD mode: tính từng món, nhân quantity, áp dụng discount ratio
             this.expenses.forEach((e) => {
                 const qty = Number(e.quantity || 1);
