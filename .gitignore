@@ -26,3 +26,6 @@ dist-ssr
 *storybook.log
 storybook-static
 android
+ios
+package-lock.json
+build-apk
