@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import "../styles/MoneyShare.css";
+import { exportToPDF } from "../services/pdf-export.service";
 import { MoneyBillType } from "../services/money-bill.service";
 import { MoneyBill } from "../services/money-bill.service";
 import { useNavigate, useParams } from "react-router-dom";
@@ -170,6 +171,10 @@ export default function MoneyShare() {
     setShowAddExpense(true);
   };
 
+  const handleExportPDF = () => {
+    exportToPDF(bill, balances);
+  };
+
   return (
     <div className="app-content-padding">
       <div style={{ fontSize: "14px" }}>
@@ -270,7 +275,7 @@ export default function MoneyShare() {
                 <tr key={i}>
                   <td>
                     {e.name} <br />
-                    {e.createdAt ? new Date(e.createdAt).toLocaleString() : ''}
+                    {e.createdAt ? new Date(e.createdAt).toLocaleString() : ""}
                   </td>
                   <td>{e.amount.toLocaleString()}</td>
                   {bill.type === MoneyBillType.FOOD && (
@@ -444,6 +449,12 @@ export default function MoneyShare() {
                 onClick={handleCopyResult}
               >
                 📋 Copy
+              </button>
+              <button
+                className="px-4 py-2 rounded-xl bg-[#88a8d8] text-white hover:bg-[#6c8dc4] transition"
+                onClick={handleExportPDF}
+              >
+                📄 Export PDF
               </button>
             </div>
           </div>

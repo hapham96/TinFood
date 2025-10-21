@@ -10,16 +10,17 @@ export default function RecordItem({ record, onOpen, onSwipeLeft }) {
 
   const handlers = useSwipeable({
     onSwiping: (e) => {
+      if (Math.abs(e.deltaY) > 10) return; // Nếu kéo dọc -> bỏ qua swipe ngang
       if (e.dir === "Left") setTranslateX(-Math.min(e.absX, 80));
       if (e.dir === "Right") setTranslateX(0);
     },
     onSwipedLeft: (e) => {
-      if (e.absX > 60) onSwipeLeft?.();
+      if (Math.abs(e.deltaY) < 10 && e.absX > 60) onSwipeLeft?.();
       setTranslateX(0);
     },
     onSwipedRight: () => setTranslateX(0),
-    trackMouse: true,
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false, // alow scroll
+    trackMouse: false,
   });
 
   return (

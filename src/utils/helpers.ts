@@ -17,3 +17,7 @@ export function sleep(ms: number = 1000) {
         }, Math.abs(ms))
     );
 }
+
+export function isNativePlatform() {
+    return !!(window as any)?.Capacitor?.isNativePlatform?.();
+}
