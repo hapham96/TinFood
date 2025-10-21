@@ -42,7 +42,16 @@ export default function RecordItem({ record, onOpen, onSwipeLeft }) {
           style={{ x: translateX }}
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           onClick={() => translateX === 0 && onOpen()}
-          className="relative z-10 p-4 bg-white shadow border cursor-pointer rounded-xl hover:bg-gray-50 transition"
+          className="
+          relative z-10 p-4
+          rounded-2xl
+          cursor-pointer
+          bg-white/60
+          backdrop-blur-md
+          border border-white/20
+          shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(0,0,0,0.08)]
+          hover:bg-white/70
+          transition"
         >
           <div className="flex justify-between items-start">
             <div className="flex-1">

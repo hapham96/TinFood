@@ -64,7 +64,7 @@ export class CameraService {
         return null;
       }
       const photo = await Camera.getPhoto({
-        quality: 30,
+        quality: 80,
         width: 800,
         height: 1000,
         allowEditing: false,

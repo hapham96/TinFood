@@ -2,9 +2,8 @@
 .section {
   background-color: #fff7f5;
   border-radius: 14px;
-  padding: 16px;
-  margin: 16px 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  margin-top: 1rem;
 }
 
 .section h2 {
@@ -235,7 +234,6 @@
 /* === Responsive === */
 @media (max-width: 480px) {
   .section {
-    margin: 15px;
     padding: 15px;
   }
 
@@ -254,8 +252,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 15px 2px 15px 2px;
-  padding: 0 15px;
 }
 
 .header-bar .title {
@@ -271,7 +267,6 @@
   color: #fff;
   border: none;
   border-radius: 10px;
-  padding: 8px 14px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;

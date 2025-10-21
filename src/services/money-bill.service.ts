@@ -23,7 +23,7 @@ export class MoneyBill {
     name?: string; // name of bill
     address?: string; // địa chỉ
     date?: string; // ngày giờ
-
+    actualTotal?: number; // số tiền thực tế đã thanh toán
     private storage: StorageService;
 
     constructor(init?: Partial<MoneyBill>) {
@@ -91,7 +91,7 @@ export class MoneyBill {
                 result[p] = Math.round(payments[p] - this.averageAmount);
             });
         } else if (this.type === MoneyBillType.FOOD) {
-             if (!this.expenses?.length) throw new Error("No expenses");
+            if (!this.expenses?.length) throw new Error("No expenses");
             // FOOD mode: tính từng món, nhân quantity, áp dụng discount ratio
             this.expenses.forEach((e) => {
                 const qty = Number(e.quantity || 1);
@@ -102,6 +102,41 @@ export class MoneyBill {
 
         return result;
     }
+
+    // 💰 Tính giá thực tế trung bình cho mỗi món (1 qty) dựa vào realPaymentAmount
+    calculateBalancesByRealPayment(): Record<string, number> {
+        const result: Record<string, number> = {};
+        if (!this.expenses?.length) throw new Error("No expenses");
+        if (!this.actualTotal || this.actualTotal <= 0) {
+            return this.calculateBalances();
+        }
+        // Tổng giá gốc (đã nhân quantity)
+        const totalOriginal = this.expenses.reduce((sum, e) => {
+            const qty = Number(e.quantity || 1);
+            const amt = Number(e.amount || 0);
+            return sum + amt * qty;
+        }, 0);
+
+        if (totalOriginal === 0) throw new Error("Total original amount is 0");
+
+        // Phân bổ lại theo tỷ lệ, nhưng chia lại cho từng qty
+        this.expenses.forEach((e) => {
+            const qty = Number(e.quantity || 1);
+            const amt = Number(e.amount || 0);
+            const ratio = (amt * qty) / totalOriginal;
+
+            // Tổng thực tế món đó
+            const totalReal = (this.actualTotal! as number) * ratio;
+
+            // 💡 Giá trung bình 1 phần
+            const pricePerQty = Math.round(totalReal / qty);
+
+            result[e.name] = pricePerQty;
+        });
+
+        return result;
+    }
+
 
     // save
     async saveMoneyBill(bill: MoneyBill, balances?: Record<string, number>): Promise<void> {

@@ -1,56 +1,74 @@
-.color-primary {
-  color: #c14564 !important;
-}
-
-.bg-primary {
-  background-color: #c14564 !important;
-}
-
-.floating-btn {
-  position: fixed;
-  bottom: 100px;
-  right: 24px;
-  width: 60px;
-  height: 60px;
-  background-color: #c14564;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 2000; /* 🔹 cao hơn BottomTabBar */
-}
-
-.floating-btn:hover {
-  background-color: #a63a56;
-  transform: translateY(-2px) scale(1.05);
-}
-
-@media (max-width: 480px) {
-  .floating-btn {
-    bottom: 90px;
-    right: 16px;
-    width: 56px;
-    height: 56px;
-    font-size: 26px;
+  :root {
+    --app-page-padding: 1rem;
+    --app-padding-03: 0.3rem;
+    --app-padding-05: 0.5rem;
+    --app-font-family: "roboto-regular", sans-serif;
   }
-}
 
-input,
-select,
-textarea {
-  font-size: 16px !important; /*  Prevent Safari zoom in */
-}
+  .app-content-padding {
+    --padding-top: var(--app-page-padding);
+    --padding-bottom: var(--app-page-padding);
+    --padding-start: var(--app-page-padding);
+    --padding-end: var(--app-page-padding);
+    padding: var(--app-page-padding);
+  }
 
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.bottom-bar {
-  background: white;
-  padding-top: 2rem;
-}
+  .color-primary {
+    color: #c14564 !important;
+  }
+
+  .bg-primary {
+    background-color: #c14564 !important;
+  }
+
+  .floating-btn {
+    position: fixed;
+    bottom: 100px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    background-color: #c14564;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2000;
+    /* 🔹 cao hơn BottomTabBar */
+  }
+
+  .floating-btn:hover {
+    background-color: #a63a56;
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  @media (max-width: 480px) {
+    .floating-btn {
+      bottom: 90px;
+      right: 16px;
+      width: 56px;
+      height: 56px;
+      font-size: 26px;
+    }
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+    /*  Prevent Safari zoom in */
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottom-bar {
+    background: white;
+    padding-top: 2rem;
+  }

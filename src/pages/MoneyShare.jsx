@@ -34,7 +34,7 @@ export default function MoneyShare() {
       setIsScanning(true);
       logger.info("Get Image (base64):", base64Url);
       const response = await bill.decodeBillInfo(base64Url); //   send base64 to API decode
-      // await sleep(10000); // simulate delay
+      // await sleep(5000); // simulate delay
       // const response = {"expenses":[{"name":"Japchae","amount":58000,"quantity":1},{"name":"Lẩu Kimchi CN","amount":65000,"quantity":1},{"name":"Lẩu Kimchi Heo","amount":65000,"quantity":1},{"name":"Gà rán C.N2","amount":75000,"quantity":1},{"name":"Nudu Kiribati","amount":49000,"quantity":1},{"name":"3 Phomai viên+Pepsi","amount":39000,"quantity":1},{"name":"Pepsi","amount":30000,"quantity":2}],"discountAmount":0,"shipAmount":0,"actualTotal":381000,"totalAmount":381000}
       logger.info("🧾 API Response:", response);
       if (response && response.totalAmount) delete response.totalAmount;
@@ -118,7 +118,7 @@ export default function MoneyShare() {
   // ⚙️ Calculate
   const calculateBalances = () => {
     try {
-      const result = bill.calculateBalances();
+      const result = bill.calculateBalancesByRealPayment();
       setBalances(result);
       setShowPopup(true);
     } catch (err) {
@@ -163,14 +163,16 @@ export default function MoneyShare() {
       bill.type === MoneyBillType.NORMAL &&
       (!bill.participants || bill.participants.length === 0)
     ) {
-      return alert("⚠️ Please add at least one participant before adding an expense.");
+      return alert(
+        "⚠️ Please add at least one participant before adding an expense."
+      );
     }
     setShowAddExpense(true);
-  }
+  };
 
   return (
-    <div className="app-container">
-      <div style={{ margin: "11px", fontSize: "14px" }}>
+    <div className="app-content-padding">
+      <div style={{ fontSize: "14px" }}>
         <ModeTabs
           disabled={!!id}
           value={bill.type}
@@ -179,7 +181,7 @@ export default function MoneyShare() {
       </div>
 
       {/* 🧾 Header section */}
-      <div className="header-bar">
+      <div className="header-bar mt-3">
         <button
           onClick={() => navigate("/bill-records")}
           className="bg-[#c14564] text-white px-3 py-2 rounded-full shadow-md hover:bg-[#a83853] transition z-50"
@@ -193,7 +195,7 @@ export default function MoneyShare() {
       <h1 className="text-2xl font-semibold mb-4 text-center color-primary">
         {bill?.name ? bill.name : "Share Bill"}
       </h1>
-      <div className="px-4">
+      <div>
         {bill.type === MoneyBillType.FOOD && !id && (
           <button
             onClick={handleScanBill}
@@ -267,7 +269,8 @@ export default function MoneyShare() {
               {bill.expenses.map((e, i) => (
                 <tr key={i}>
                   <td>
-                    {e.name} <br/>{new Date(e.createdAt).toLocaleString()}
+                    {e.name} <br />
+                    {e.createdAt ? new Date(e.createdAt).toLocaleString() : ''}
                   </td>
                   <td>{e.amount.toLocaleString()}</td>
                   {bill.type === MoneyBillType.FOOD && (
@@ -284,46 +287,68 @@ export default function MoneyShare() {
         )}
       </div>
       {bill.type === MoneyBillType.FOOD && (
-        <div className="section">
-          <h2>Adding bill info </h2>
-          {bill.type === MoneyBillType.FOOD && (
-            <div className="extra-inputs mt-3">
-              <div className="flex justify-start items-center">
-                <span>Discount</span>
-                <input
-                  className="ml-2"
-                  type="number"
-                  placeholder="Discount amount"
-                  value={bill.discountAmount || ""}
-                  onChange={(e) =>
-                    setBill(
-                      new MoneyBill({
-                        ...bill,
-                        discountAmount: Number(e.target.value),
-                      })
-                    )
-                  }
-                />
-              </div>
-              <div className="flex justify-start items-center mt-2">
-                <span>Ship Fee </span>
-                <input
-                  className="ml-2"
-                  type="number"
-                  placeholder="Ship amount"
-                  value={bill.shipAmount || ""}
-                  onChange={(e) =>
-                    setBill(
-                      new MoneyBill({
-                        ...bill,
-                        shipAmount: Number(e.target.value),
-                      })
-                    )
-                  }
-                />
-              </div>
+        <div className="section p-4 rounded-xl bg-[#fff8f6]">
+          <h2 className="text-lg font-semibold mb-3">
+            Adding bill info (optional)
+          </h2>
+
+          <div className="extra-inputs space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="w-1/3 text-gray-700 font-medium">
+                Real Payment
+              </span>
+              <input
+                className="w-2/3 border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                type="number"
+                placeholder="Real payment amount"
+                value={bill.actualTotal || ""}
+                onChange={(e) =>
+                  setBill(
+                    new MoneyBill({
+                      ...bill,
+                      actualTotal: Number(e.target.value),
+                    })
+                  )
+                }
+              />
             </div>
-          )}
+
+            <div className="flex justify-between items-center">
+              <span className="w-1/3 text-gray-700 font-medium">Discount</span>
+              <input
+                className="w-2/3 border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                type="number"
+                placeholder="Discount amount"
+                value={bill.discountAmount || ""}
+                onChange={(e) =>
+                  setBill(
+                    new MoneyBill({
+                      ...bill,
+                      discountAmount: Number(e.target.value),
+                    })
+                  )
+                }
+              />
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="w-1/3 text-gray-700 font-medium">Ship Fee</span>
+              <input
+                className="w-2/3 border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                type="number"
+                placeholder="Ship amount"
+                value={bill.shipAmount || ""}
+                onChange={(e) =>
+                  setBill(
+                    new MoneyBill({
+                      ...bill,
+                      shipAmount: Number(e.target.value),
+                    })
+                  )
+                }
+              />
+            </div>
+          </div>
         </div>
       )}
 

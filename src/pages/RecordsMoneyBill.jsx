@@ -28,7 +28,7 @@ export default function RecordsMoneyBill() {
   }, []);
 
   return (
-    <div className="flex flex-col p-4" style={{ height: "86vh" }}>
+    <div className="flex flex-col p-4" style={{ height: "82vh" }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <h2 className="text-xl font-bold color-primary">Saved Bills</h2>
@@ -52,7 +52,7 @@ export default function RecordsMoneyBill() {
           </button>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1">
           {records.map((r) => (
             <RecordItem
               key={r.id}
@@ -77,4 +77,3 @@ export default function RecordsMoneyBill() {
     </div>
   );
 }
-
