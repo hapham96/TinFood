@@ -43,13 +43,13 @@ export default function RecordsMoneyBill() {
       {/* Empty state */}
       {records.length === 0 ? (
         <div className="p-4 text-center text-gray-500 flex-1">
-          No saved bills yet.
-          <button
+          No saved bills yet <br />
+          <a
             onClick={addNewBill}
-            className="circle-btn flex items-center justify-center"
+            className="items-center justify-center color-primary font-bold cursor-pointer"
           >
-            + Add Bill
-          </button>
+            + Add New Bill
+          </a>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1">
