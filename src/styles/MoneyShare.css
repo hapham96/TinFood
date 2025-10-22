@@ -271,6 +271,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  padding: 0.5rem 1rem;
 }
 
 .calc-btn:hover {
@@ -286,11 +287,6 @@
 
   .header-bar .title {
     font-size: 22px;
-  }
-
-  .header-bar .calc-btn {
-    padding: 6px 10px;
-    font-size: 15px;
   }
 }
 

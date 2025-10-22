@@ -6,10 +6,12 @@ import { StorageService } from "../services/storage.service";
 import { displayKmLabel } from "../utils/helpers";
 import { DEFAULT_LOCATION, STORAGE_KEYS } from "../utils/constants";
 import { Geolocation } from "@capacitor/geolocation";
+import { useNavigate } from "react-router-dom";
 
 export default function Search() {
   const logger = useLogger("SearchPage");
   const storageService = new StorageService();
+  const navigate = useNavigate();
 
   const [selectedTags, setSelectedTags] = useState([]);
   const [tags, setTags] = useState([]);
@@ -108,6 +110,10 @@ export default function Search() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore]);
 
+  const handleRestaurantClick = (restaurant) => {
+    navigate(`/restaurant-detail/${restaurant.id}`, { state: { restaurant } });
+  };
+
   return (
     <div className="min-h-screen px-6 py-10">
       <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-md p-6">
@@ -158,7 +164,7 @@ export default function Search() {
               </h2>
               <ul className="list-disc ml-6 space-y-3">
                 {suggestions.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} onClick={() => handleRestaurantClick(item)}>
                     <div className="font-bold">{item.name}</div>
                     <div className="text-sm text-gray-600">
                       {item.address}&nbsp;

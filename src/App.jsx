@@ -9,6 +9,7 @@ import SignUp from "./pages/SignUp";
 import FloatingButton from "./components/FloatingButton";
 import MoneyShare from "./pages/MoneyShare";
 import RecordsMoneyBill from "./pages/RecordsMoneyBill";
+import RestaurantDetail from "./pages/RestaurantDetail";
 export default function App() {
   return (
     <Router>
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/money-share" element={<MoneyShare />} />
             <Route path="/money-share/:id" element={<MoneyShare />} />
             <Route path="/bill-records" element={<RecordsMoneyBill />} />
+            <Route path="/restaurant-detail/:id" element={<RestaurantDetail />} />
           </Routes>
         </main>
         {/* <FloatingButton /> */}

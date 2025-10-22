@@ -10,6 +10,7 @@ import { useLogger } from "../services/logger/useLogger";
 import { sleep } from "../utils/helpers";
 import ModeTabs from "../components/ModeTabs.jsx";
 import AddExpensePopup from "./AddExpensePopup.jsx";
+import { CiCalculator1 } from "react-icons/ci";
 
 export default function MoneyShare() {
   const logger = useLogger("MoneySharePage");

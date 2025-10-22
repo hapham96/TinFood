@@ -3,14 +3,16 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import TinderCard from "react-tinder-card";
 import { foodService } from "../services/food.service";
 import { useLogger } from "../services/logger/useLogger";
-import { displayKmLabel } from "../utils/helpers";
+import { displayKmLabel, isNativePlatform } from "../utils/helpers";
 import { Geolocation } from "@capacitor/geolocation";
 import { DEFAULT_LOCATION } from "../utils/constants";
-// import { isRunningInBrowser } from "../utils/helpers";
+import { useNavigate } from "react-router-dom";
+import { StorageService } from "../services/storage.service";
+import { STORAGE_KEYS } from "../utils/constants";
 
 const Explore = () => {
   const logger = useLogger("ExplorePage");
-
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -19,14 +21,15 @@ const Explore = () => {
 
   const [lastDirection, setLastDirection] = useState();
   const [error, setError] = useState(null);
+  const storageService = new StorageService();
 
   useEffect(() => {
     const getCoordinates = async () => {
       try {
-        // if (isRunningInBrowser()) {
-        //   setCoords(DEFAULT_LOCATION);
-        //   return;
-        // }
+        if (!isNativePlatform()) {
+          setCoords(DEFAULT_LOCATION);
+          return;
+        }
         const perm = await Geolocation.checkPermissions();
         if (perm.location !== "granted") {
           const req = await Geolocation.requestPermissions();
@@ -101,19 +104,31 @@ const Explore = () => {
     }
   };
 
-  const swiped = (direction, name, location) => {
-    logger.info(`You swiped ${direction} on ${name}`);
+  const swiped = async (direction, restaurant) => {
+    logger.info(`You swiped ${direction} on ${restaurant.name}`);
     setLastDirection(direction);
 
     if (direction === "right") {
-      const confirmGo = window.confirm(
-        `Would you like to navigate to ${name}?`
-      );
-      if (confirmGo) {
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          location
-        )}`;
-        window.open(mapsUrl, "_blank");
+      const confirm = window.confirm(`Would you like to add Favorite ${name}?`);
+      if (confirm) {
+        // const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        //   location
+        // )}`;
+        // window.open(mapsUrl, "_blank");
+        const favRaw = await storageService.get(STORAGE_KEYS.FAVORITES);
+        let favorites = favRaw ? JSON.parse(favRaw) : [];
+        const isAlreadyFav = favorites.some((r) => r.id === restaurant.id);
+        if (isAlreadyFav) {
+          alert(`${restaurant.name} is already in your favorites!`);
+          return;
+        } else {
+          favorites.push(restaurant);
+          logger.info(`❤️ Added ${restaurant.name} to favorites`);
+        }
+        await storageService.set(
+          STORAGE_KEYS.FAVORITES,
+          JSON.stringify(favorites)
+        );
       }
     }
   };
@@ -125,6 +140,12 @@ const Explore = () => {
         .map(() => React.createRef()),
     [restaurants.length]
   );
+
+  const handleRestaurantClick = (restaurant) => {
+    navigate(`/restaurant-detail/${restaurant.id}`, {
+      state: { restaurant },
+    });
+  };
 
   return (
     <div className="h-full bg-[#faf2e4] flex flex-col items-center justify-center px-4 overflow-hidden">
@@ -139,9 +160,10 @@ const Explore = () => {
               ref={childRefs[index]}
               className="absolute w-[90vw] max-w-sm h-[70vh] max-h-[500px]"
               key={`${res.id}-${index}`} //index
-              onSwipe={(dir) => swiped(dir, res.name, res.address)}
+              onSwipe={(dir) => swiped(dir, res)}
               onCardLeftScreen={() => onCardLeftScreen(res.name, index)}
               preventSwipe={["up", "down"]}
+              onClick={() => handleRestaurantClick(res)}
             >
               <div
                 className="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center justify-between h-full"

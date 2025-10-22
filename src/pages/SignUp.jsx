@@ -27,7 +27,7 @@ export default function SignUp() {
 
   return (
     <div className="flex items-center justify-center px-6 py-10">
-      <div className="shadow-md rounded-lg p-6 w-96 bg-gray-50">
+      <div className="shadow-md rounded-lg p-6 w-96 bg-[#faf2e4]">
         <h2 className="text-2xl font-bold text-center color-primary mb-6">
           Sign Up
         </h2>

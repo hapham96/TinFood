@@ -1,12 +1,14 @@
 /* eslint-disable no-unused-vars */
 import { NavLink } from "react-router-dom";
-import { FaSearch, FaCompass, FaHeart, FaShareAlt } from "react-icons/fa";
-
+import { CiSearch, CiShare2 } from "react-icons/ci";
+import { FaWpexplorer } from "react-icons/fa";
+import { MdFavoriteBorder } from "react-icons/md";
+import { IoRestaurantOutline } from "react-icons/io5";
 const tabItems = [
-  { label: "Search", icon: FaSearch, to: "/" },
-  { label: "Explore", icon: FaCompass, to: "/explore" },
-  { label: "ShareMoney", icon: FaShareAlt, to: "/bill-records" },
-  { label: "Favorite", icon: FaHeart, to: "/favorite" },
+  { label: "Search", icon: CiSearch, to: "/" },
+  { label: "Explore", icon: IoRestaurantOutline, to: "/explore" },
+  { label: "ShareMoney", icon: CiShare2, to: "/bill-records" },
+  { label: "Favorite", icon: MdFavoriteBorder, to: "/favorite" },
 ];
 
 export default function BottomTabBar() {
