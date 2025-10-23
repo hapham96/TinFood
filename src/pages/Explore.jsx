@@ -69,9 +69,8 @@ const Explore = () => {
           page: pageNum,
         });
         // add new items in current list
-        setRestaurants((prev) => [...prev, ...response.items]);
+        setRestaurants(response.items);
         setHasMore(response.hasNextPage);
-        setPage(response.pageNumber);
         logger.info(
           `Loaded page ${response.pageNumber}/${response.totalPages}. Has next page: ${response.hasNextPage}`
         );
@@ -93,14 +92,17 @@ const Explore = () => {
       setHasMore(true);
       loadRestaurants(1);
     }
-  }, [coords, loadRestaurants]);
+  }, [coords]);
 
   const onCardLeftScreen = (name, index) => {
-    logger.info(`${name} left the screen!`);
+    logger.info(`${name} left the screen!`, index, restaurants.length);
+    logger.info(`loading -> `, loading, ` hasMore ->`, hasMore);
+    // restaurants.length - 10 === index &&
     if (index === 0 && !loading && hasMore) {
       logger.info("Last card swiped. Loading next page...");
-      setPage(page + 1);
-      loadRestaurants(page + 1);
+      const nextPage = page + 1; // Dùng state hiện tại
+      setPage(nextPage);
+      loadRestaurants(nextPage); // Gọi ngoài setPage
     }
   };
 
