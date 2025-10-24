@@ -58,7 +58,10 @@ export default function RestaurantDetail() {
         logger.info(`❤️ Added to favorites: ${restaurant.name}`);
       }
 
-      await storageService.set(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
+      await storageService.set(
+        STORAGE_KEYS.FAVORITES,
+        JSON.stringify(favorites)
+      );
       setIsFavorite(!isFavorite);
     } catch (err) {
       logger.error("Error updating favorites", err);
@@ -79,7 +82,25 @@ export default function RestaurantDetail() {
     );
   }
 
-  const { name, imageUrl, rating, totalReview, distance, address } = restaurant;
+  const {
+    name,
+    imageUrl,
+    rating,
+    totalReview,
+    distance,
+    address,
+    foods = [
+      // {
+      //   id: 1,
+      //   name: "Sample Food",
+      //   price: "20000",
+      //   imageUrl:
+      //     "https://images.unsplash.com/photo-1600891964599-f61ba0e24092",
+      //   bestSeller: false,
+      // }
+    ],
+    coupons = [],
+  } = restaurant;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,10 +114,7 @@ export default function RestaurantDetail() {
 
         {/* Back + Favorite buttons */}
         <div className="absolute top-4 left-4 flex gap-3">
-          <button
-            className="bg-white/70 backdrop-blur-sm rounded-full p-2"
-            onClick={() => navigate(-1)}
-          >
+          <button className="color-primary" onClick={() => navigate(-1)}>
             ←
           </button>
         </div>
@@ -138,29 +156,43 @@ export default function RestaurantDetail() {
           <SlArrowRight className="w-4 h-4 text-gray-400" />
         </div>
 
-        <div className="flex items-center mt-3 text-green-600 text-sm">
-          <CiHashtag className="w-4 h-4 mr-1" />
-          <span>Offers</span>
-        </div>
+        {coupons.length > 0 && (
+          <div className="flex items-center mt-3 color-primary text-sm">
+            <CiHashtag className="w-4 h-4 mr-1" />
+            <span className="mr-2">Discounts: </span>
+            {coupons.map((coupon) => (
+              <span className="mr-2 coupon">{coupon} </span>
+            ))}
+          </div>
+        )}
 
-        <div className="mt-5">
-          <h2 className="text-lg font-semibold mb-3">Foods</h2>
+        {foods.length > 0 && (
+          <div className="mt-5">
+            <h2 className="text-lg font-semibold mb-3">Foods</h2>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative bg-white rounded-2xl shadow p-2">
-              <img
-                src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092"
-                className="rounded-2xl w-full h-32 object-cover"
-              />
-              <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
-                Best Seller
-              </div>
-              <p className="mt-2 text-sm font-medium text-gray-700">
-                Caesar Salad
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              {foods.map((item) => (
+                <div className="relative bg-white rounded-2xl shadow p-2">
+                  <img
+                    src={item.imageUrl}
+                    className="rounded-2xl w-full h-32 object-cover"
+                  />
+                  {item.bestSeller && (
+                    <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
+                      Best Seller
+                    </div>
+                  )}
+                  <p className="mt-2 text-sm font-medium text-gray-700">
+                    {item.name}
+                  </p>
+                  <span className="mt-2 text-gray-700 text-sm font-medium">
+                    {item.price}d
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -22,7 +22,8 @@ export default function Search() {
 
   useEffect(() => {
     (async () => {
-      const cached = await storageService.get(STORAGE_KEYS.TAGS);
+      // const cached = await storageService.get(STORAGE_KEYS.TAGS);
+      const cached = null;
       if (cached) {
         setTags(JSON.parse(cached));
         logger.info("✅ Loaded tags from cache");

@@ -1,17 +1,25 @@
 import { apiService } from "./baseApi/api.service";
 const PAGE_SIZE = 10;
 interface Restaurant {
+  id: number;
+  name: string;
+  address: string;
+  imageUrl: string;
+  rating: string;
+  latitude: string;
+  longitude: string;
+  distance: string;
+  phone?: string;
+  externalId?: string;
+  source?: string;
+  coupons?: string[];
+  foods?: {
     id: number;
     name: string;
-    address: string;
+    price: number;
     imageUrl: string;
-    rating: string;
-    latitude: string;
-    longitude: string;
-    distance: string;
-    phone?: string;
-    externalId?: string;
-    source?: string;
+    bestSeller?: boolean;
+  }[];
 }
 export type RestaurantResponse = {
     items: Restaurant[];

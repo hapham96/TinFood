@@ -3,6 +3,7 @@
     --app-padding-03: 0.3rem;
     --app-padding-05: 0.5rem;
     --app-font-family: "roboto-regular", sans-serif;
+    --app-color-primary: #c14564;
   }
 
   .app-content-padding {
@@ -71,4 +72,11 @@
   .bottom-bar {
     background: white;
     padding-top: 2rem;
+  }
+
+  .coupon {
+    padding: 0.3rem;
+    background: var(--app-color-primary);
+    border-radius: 9px;
+    color: white;
   }
