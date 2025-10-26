@@ -79,6 +79,7 @@ export async function exportToPDF(bill: MoneyBill, balances: Record<string, numb
             { text: `Báo cáo chi phí: ${title}`, style: "header" },
             { text: `Thời gian tạo: ${now}`, style: "subheader" },
             { text: `Tổng chi phí: ${bill.totalAfterDiscount.toLocaleString()} ₫`, margin: [0, 0, 0, 10] },
+            { text: `Chi phí trung bình mỗi người: ${bill.averageAmount.toLocaleString()} ₫`, margin: [0, 0, 0, 10] },
             { text: "Chi tiết chi phí", style: "sectionHeader" },
             {
                 table: {

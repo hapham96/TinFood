@@ -9,6 +9,7 @@ import { DEFAULT_LOCATION } from "../utils/constants";
 import { useNavigate } from "react-router-dom";
 import { StorageService } from "../services/storage.service";
 import { STORAGE_KEYS } from "../utils/constants";
+import ConfirmModal from "../components/modals/ConfirmModal";
 
 const Explore = () => {
   const logger = useLogger("ExplorePage");
@@ -22,6 +23,13 @@ const Explore = () => {
   const [lastDirection, setLastDirection] = useState();
   const [error, setError] = useState(null);
   const storageService = new StorageService();
+  // alert modal
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    message: "",
+    onConfirm: null,
+    isAlertMode: false,
+  });
 
   useEffect(() => {
     const getCoordinates = async () => {
@@ -111,27 +119,33 @@ const Explore = () => {
     setLastDirection(direction);
 
     if (direction === "right") {
-      const confirm = window.confirm(`Would you like to add Favorite ${name}?`);
-      if (confirm) {
-        // const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        //   location
-        // )}`;
-        // window.open(mapsUrl, "_blank");
-        const favRaw = await storageService.get(STORAGE_KEYS.FAVORITES);
-        let favorites = favRaw ? JSON.parse(favRaw) : [];
-        const isAlreadyFav = favorites.some((r) => r.id === restaurant.id);
-        if (isAlreadyFav) {
-          alert(`${restaurant.name} is already in your favorites!`);
-          return;
-        } else {
-          favorites.push(restaurant);
-          logger.info(`❤️ Added ${restaurant.name} to favorites`);
-        }
-        await storageService.set(
-          STORAGE_KEYS.FAVORITES,
-          JSON.stringify(favorites)
-        );
-      }
+      setAlertModal({
+        isOpen: true,
+        message: `Would you like add ${restaurant.name} to your Favorites?`,
+        isAlertModal: false,
+        onClose: () => setAlertModal({ isOpen: false, message: "" }),
+        onConfirm: async () => {
+          const favRaw = await storageService.get(STORAGE_KEYS.FAVORITES);
+          let favorites = favRaw ? JSON.parse(favRaw) : [];
+          const isAlreadyFav = favorites.some((r) => r.id === restaurant.id);
+          if (isAlreadyFav) {
+            return setAlertModal({
+              isOpen: true,
+              message: `${restaurant.name} is already in your favorites!`,
+              isAlertMode: true,
+              onClose: () => setAlertModal({ isOpen: false, message: "" }),
+            });
+          } else {
+            favorites.push(restaurant);
+            logger.info(`❤️ Added ${restaurant.name} to favorites`);
+          }
+          await storageService.set(
+            STORAGE_KEYS.FAVORITES,
+            JSON.stringify(favorites)
+          );
+          setAlertModal({ isOpen: false, message: "" });
+        },
+      });
     }
   };
 
@@ -202,6 +216,18 @@ const Explore = () => {
           </p>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        text={alertModal.message}
+        onClose={() => setAlertModal({ isOpen: false, message: "" })}
+        isAlertMode={alertModal.isAlertMode}
+        onConfirm={
+          alertModal.onConfirm
+            ? alertModal.onConfirm
+            : () => setAlertModal({ isOpen: false, message: "" })
+        }
+      />
     </div>
   );
 };

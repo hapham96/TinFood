@@ -133,7 +133,7 @@ export default function MoneyShare() {
     setAlertModal({
       isOpen: true,
       message: "Are you sure you want to delete this person?",
-      isAlertModal: false,
+      isAlertMode: false,
       onClose: () => setAlertModal({ isOpen: false, message: "" }),
       onConfirm: () => {
         setBill(
@@ -152,7 +152,7 @@ export default function MoneyShare() {
     setAlertModal({
       isOpen: true,
       message: "Are you sure you want to delete this expense?",
-      isAlertModal: false,
+      isAlertMode: false,
       onClose: () => setAlertModal({ isOpen: false, message: "" }),
       onConfirm: () => {
         const newExp = [...bill.expenses];

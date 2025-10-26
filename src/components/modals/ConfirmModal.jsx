@@ -15,7 +15,7 @@ import React from "react";
 export default function ConfirmModal({
   isOpen,
   text,
-  title = "Confirmation", // Default title
+  title,
   onClose,
   onConfirm,
   isAlertMode = false, // Default to false
@@ -24,7 +24,7 @@ export default function ConfirmModal({
 }) {
   // Determine the confirm button text based on mode or prop
   const finalConfirmText = confirmText ?? (isAlertMode ? "OK" : "Confirm");
-
+  const finalTitleText = title ?? (isAlertMode ? "Alert" : "Confirmation");
   // Return null if the modal should not be open
   if (!isOpen) {
     return null;
@@ -53,11 +53,11 @@ export default function ConfirmModal({
         )}
 
         {/* Title - Primary color */}
-        {title && (
+        {finalTitleText && (
           <h3 className="text-lg font-bold mb-3 text-center text-[#c14564]">
             {" "}
             {/* Adjusted size/margin */}
-            {title}
+            {finalTitleText}
           </h3>
         )}
 
