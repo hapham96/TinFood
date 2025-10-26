@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Select from "react-select";
 import { useLogger } from "../services/logger/useLogger";
 import { foodService } from "../services/food.service";
@@ -7,42 +7,49 @@ import { displayKmLabel } from "../utils/helpers";
 import { DEFAULT_LOCATION, STORAGE_KEYS } from "../utils/constants";
 import { Geolocation } from "@capacitor/geolocation";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setTags,
+  setSelectedTags,
+  setSuggestions,
+  appendSuggestions,
+  setPage,
+  setHasMore,
+  setLoading,
+  resetSearch,
+} from "../store/searchSlice";
 
 export default function Search() {
   const logger = useLogger("SearchPage");
   const storageService = new StorageService();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [tags, setTags] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { selectedTags, tags, suggestions, page, hasMore, loading } =
+    useSelector((state) => state.search);
 
+  // ✅ Load tags
   useEffect(() => {
     (async () => {
-      // const cached = await storageService.get(STORAGE_KEYS.TAGS);
-      const cached = null;
+      const cached = null; // bạn có thể bật cache lại nếu muốn
       if (cached) {
-        setTags(JSON.parse(cached));
+        dispatch(setTags(JSON.parse(cached)));
         logger.info("✅ Loaded tags from cache");
       } else {
         const data = await foodService.getTags();
         const mapped = data.map((t) => ({ value: t.id, label: t.name }));
-        setTags(mapped);
+        dispatch(setTags(mapped));
         storageService.set(STORAGE_KEYS.TAGS, JSON.stringify(mapped));
         logger.info("🌐 Loaded tags from API");
       }
     })();
-  }, []);
+  }, [dispatch]);
 
+  // ✅ Fetch suggestions (API call)
   const handleGetSuggestions = async (loadMore = false) => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-    setLoading(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    dispatch(setLoading(true));
+
     const tagIds = selectedTags.map((t) => t.value);
     let locationToUse = { ...DEFAULT_LOCATION };
 
@@ -64,11 +71,11 @@ export default function Search() {
 
     try {
       if (!loadMore) {
-        // reset if submit suggest again
-        setSuggestions([]);
-        setPage(1);
-        setHasMore(false);
+        dispatch(setSuggestions([]));
+        dispatch(setPage(1));
+        dispatch(setHasMore(false));
       }
+
       const request = {
         lat: locationToUse.latitude,
         lng: locationToUse.longitude,
@@ -76,28 +83,28 @@ export default function Search() {
         pageSize: 10,
         page: loadMore ? page + 1 : 1,
       };
+
       const result = await foodService.getRestaurants(request);
-      logger.info("🌐 Fetched suggestions from API: ", {
-        request,
-        result,
-      });
+      logger.info("🌐 Fetched suggestions", { request, result });
+
       if (result?.items) {
-        setSuggestions((prev) =>
-          loadMore ? [...prev, ...result.items] : result.items
-        );
-        setPage(result.pageNumber);
-        setHasMore(result.hasNextPage);
+        if (loadMore) {
+          dispatch(appendSuggestions(result.items));
+        } else {
+          dispatch(setSuggestions(result.items));
+        }
+        dispatch(setPage(result.pageNumber));
+        dispatch(setHasMore(result.hasNextPage));
       }
     } catch (err) {
       logger.error("API error", err);
-      setSuggestions([]);
-      setPage(1);
-      setHasMore(false);
+      dispatch(resetSearch());
     } finally {
-      setLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
+  // ✅ Infinite Scroll
   useEffect(() => {
     const handleScroll = () => {
       const nearBottom =
@@ -115,6 +122,7 @@ export default function Search() {
     navigate(`/restaurant-detail/${restaurant.id}`, { state: { restaurant } });
   };
 
+  // ✅ UI
   return (
     <div className="min-h-screen px-6 py-10">
       <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-md p-6">
@@ -126,23 +134,20 @@ export default function Search() {
           isMulti
           options={tags}
           value={selectedTags}
-          onChange={(selected) => setSelectedTags(selected || [])}
+          onChange={(selected) => dispatch(setSelectedTags(selected || []))}
         />
 
         <div className="text-center mt-3 mb-3">
           <button
             onClick={() => handleGetSuggestions(false)}
-            disabled={loading || selectedTags.length === 0}
-            className={`px-5 py-2 rounded-full ${
-              loading || selectedTags.length === 0
-                ? "bg-gray-400"
-                : "bg-primary text-white hover:bg-primary"
-            }`}
+            disabled={loading}
+            className={`px-5 py-2 rounded-full ${"bg-primary text-white hover:bg-primary"}`}
           >
             {loading ? "⏳ Loading..." : "🍽️ Get Suggestions"}
           </button>
         </div>
-        {/* suggest result */}
+
+        {/* ✅ Suggest Result */}
         <div
           className="overflow-y-auto"
           style={{ maxHeight: "60vh" }}

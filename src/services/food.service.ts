@@ -13,12 +13,15 @@ interface Restaurant {
   externalId?: string;
   source?: string;
   coupons?: string[];
+  openTime?: any[];
+  priceRange?: string;
   foods?: {
     id: number;
     name: string;
     price: number;
     imageUrl: string;
     bestSeller?: boolean;
+    category?: string;
   }[];
 }
 export type RestaurantResponse = {
