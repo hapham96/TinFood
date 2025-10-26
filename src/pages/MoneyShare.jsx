@@ -8,9 +8,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { cameraService } from "../services/camera.service";
 import { useLogger } from "../services/logger/useLogger";
 import { sleep } from "../utils/helpers";
+import ConfirmModal from "../components/modals/ConfirmModal.jsx";
 
 // Component
-import ModeTabs from "../components/ModeTabs.jsx";
 import AddExpensePopup from "../components/modals/AddExpensePopup.jsx";
 import SubBillCreatorModal from "../components/modals/SubBillCreatorModal.jsx";
 
@@ -40,7 +40,13 @@ export default function MoneyShare() {
   const [expenseToEdit, setExpenseToEdit] = useState(null); // Lưu data từ sub-bill
   // === flag for back btn ===
   const [savedParentBillId, setSavedParentBillId] = useState("");
-
+  // alert modal
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    message: "",
+    isAlertModal: true,
+    onConfirm: null,
+  });
   // ⚡ Load bill (Luồng chính)
   useEffect(() => {
     const loadBill = async () => {
@@ -54,7 +60,10 @@ export default function MoneyShare() {
         const billService = new MoneyBill();
         const loaded = await billService.getMoneyBill(id);
         if (!loaded) {
-          alert("⚠️ Bill not found!");
+          setAlertModal({
+            isOpen: true,
+            message: "⚠️ Bill not found!",
+          });
           navigate("/bill-records");
           return;
         }
@@ -64,7 +73,10 @@ export default function MoneyShare() {
         logger.info("✅ Bill loaded:", loaded);
       } catch (err) {
         console.error("❌ Load failed:", err);
-        alert("Failed to load bill.");
+        setAlertModal({
+          isOpen: true,
+          message: "⚠️ Failed to load bill!",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -90,7 +102,10 @@ export default function MoneyShare() {
       setBill(parsedBill);
     } catch (err) {
       logger.error("❌ Scan error:", err);
-      alert("Failed to scan or decode bill!");
+      setAlertModal({
+        isOpen: true,
+        message: "⚠️ Failed to scan or decode bill!",
+      });
     } finally {
       setIsScanning(false);
     }
@@ -100,7 +115,10 @@ export default function MoneyShare() {
   const addPerson = () => {
     if (!tempName.trim()) return;
     if (bill.participants?.includes(tempName))
-      return alert("Name already exists");
+      return setAlertModal({
+        isOpen: true,
+        message: "⚠️ Name is already exist!",
+      });
 
     setBill(
       new MoneyBill({
@@ -112,24 +130,42 @@ export default function MoneyShare() {
   };
 
   const removePerson = (p) => {
-    setBill(
-      new MoneyBill({
-        ...bill,
-        participants: bill.participants?.filter((x) => x !== p),
-        expenses: bill.expenses.filter((e) => e.paidBy !== p),
-      })
-    );
+    setAlertModal({
+      isOpen: true,
+      message: "Are you sure you want to delete this person?",
+      isAlertModal: false,
+      onClose: () => setAlertModal({ isOpen: false, message: "" }),
+      onConfirm: () => {
+        setBill(
+          new MoneyBill({
+            ...bill,
+            participants: bill.participants?.filter((x) => x !== p),
+            expenses: bill.expenses.filter((e) => e.paidBy !== p),
+          })
+        );
+        setAlertModal({ isOpen: false, message: "" });
+      },
+    });
   };
 
   const removeExpense = (i, subBillId) => {
-    const newExp = [...bill.expenses];
-    newExp.splice(i, 1);
-    setBill(new MoneyBill({ ...bill, expenses: newExp }));
-    if (subBillId) {
-      // remove in storage
-      bill.deleteMoneyBill(subBillId);
-      logger.info("✅ Sub-bill deleted with ID:", subBillId);
-    }
+    setAlertModal({
+      isOpen: true,
+      message: "Are you sure you want to delete this expense?",
+      isAlertModal: false,
+      onClose: () => setAlertModal({ isOpen: false, message: "" }),
+      onConfirm: () => {
+        const newExp = [...bill.expenses];
+        newExp.splice(i, 1);
+        setBill(new MoneyBill({ ...bill, expenses: newExp }));
+        if (subBillId) {
+          // remove in storage
+          bill.deleteMoneyBill(subBillId);
+          logger.info("✅ Sub-bill deleted with ID:", subBillId);
+        }
+        setAlertModal({ isOpen: false, message: "" })
+      },
+    });
   };
 
   // ⚙️ Calculate
@@ -143,7 +179,10 @@ export default function MoneyShare() {
       setBalances(result);
       setShowPopup(true);
     } catch (err) {
-      alert(err.message);
+      setAlertModal({
+        isOpen: true,
+        message: err.message,
+      });
     }
   };
 
@@ -159,7 +198,10 @@ export default function MoneyShare() {
       navigate("/bill-records");
     } catch (error) {
       console.error("❌ Save failed:", error);
-      alert("Failed to save record!");
+      setAlertModal({
+        isOpen: true,
+        message: "⚠️ Failed to save record!",
+      });
     }
   };
 
@@ -181,7 +223,10 @@ export default function MoneyShare() {
       bill.type === 1 ? "Normal" : "Food"
     }\nTotal: ${bill.totalAfterDiscount.toLocaleString()} ₫\n${text}`;
     navigator.clipboard.writeText(summary);
-    alert("📋 Result copied!");
+    setAlertModal({
+      isOpen: true,
+      message: "📋 Result copied",
+    });
   };
 
   const handleExportPDF = () => {
@@ -196,9 +241,12 @@ export default function MoneyShare() {
       bill.type === MoneyBillType.NORMAL &&
       (!bill.participants || bill.participants.length === 0)
     ) {
-      return alert(
-        "⚠️ Please add at least one participant before adding an expense."
-      );
+      setAlertModal({
+        isOpen: true,
+        message:
+          "⚠️ Please add at least one participant before adding an expense.",
+      });
+      return;
     }
     setExpenseToEdit(null); // Mở ở chế độ "thêm mới"
     setShowAddExpense(true);
@@ -520,72 +568,101 @@ export default function MoneyShare() {
       />
 
       {/* Popup Result */}
+      {/* Popup: Result Display */}
       {showPopup && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
-          onClick={() => setShowPopup(false)}
+          // Overlay - Kept original styles
+          className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 backdrop-blur-sm" // Added backdrop-blur-sm for visual enhancement
+          onClick={() => setShowPopup(false)} // Close on overlay click
         >
           <div
-            className="relative bg-[#faf2e4] rounded-2xl shadow-lg p-6 w-96 max-w-[90%] text-[#5b4646] animate-fadeIn"
-            onClick={(e) => e.stopPropagation()}
+            // Modal Container - White background, rounded corners, shadow
+            className="relative bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4 text-[#4b2e19] animate-fadeIn" // Changed bg, max-w-sm, mx-4
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
           >
+            {/* Close Button - Hover with primary color */}
             <button
               onClick={() => setShowPopup(false)}
-              className="absolute top-3 right-3 text-[#6b4f4f] text-xl hover:text-[#a17f7f] transition"
+              className="absolute top-3 right-3 text-gray-400 text-2xl hover:text-[#c14564] transition" // Changed color, size, hover effect
               aria-label="Close"
             >
-              ✖
+              &times; {/* Using a standard 'times' character */}
             </button>
 
-            <h3 className="text-2xl font-semibold mb-4 text-center">
-              💸 Result
+            <h3 className="text-xl font-bold mb-5 text-center text-[#c14564]">
+              {" "}
+              💸 Result 💸
             </h3>
 
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-2.5 mb-6 border-t border-b border-gray-200 py-4 max-h-[40vh] overflow-y-auto">
+              {" "}
               {Object.entries(balances).map(([person, balance]) => (
-                <li key={person} className="text-sm text-[#4a3c3c]">
-                  {bill.type === MoneyBillType.FOOD ? (
-                    <>
-                      <strong>{person}</strong> — {balance.toLocaleString()} ₫
-                    </>
-                  ) : (
-                    <>
-                      <strong>{person}</strong> —{" "}
-                      {balance > 0
-                        ? `Receive (+${balance.toLocaleString()} ₫)`
+                <li
+                  key={person}
+                  className="text-sm text-[#4b2e19] flex justify-between items-center"
+                >
+                  {" "}
+                  {/* Kept text color, added flex */}
+                  <strong>{person}</strong>
+                  {/* Amount display with conditional coloring */}
+                  <span
+                    className={`font-medium ${
+                      balance > 0
+                        ? "text-green-600"
                         : balance < 0
-                        ? `Pay (-${Math.abs(balance).toLocaleString()} ₫)`
-                        : "Nothing todo"}
-                    </>
-                  )}
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {" "}
+                    {/* Added text color based on value */}
+                    {balance > 0
+                      ? `Receive (+${balance.toLocaleString()} ₫)`
+                      : balance < 0
+                      ? `Pay (-${Math.abs(balance).toLocaleString()} ₫)`
+                      : "Nothing todo"}{" "}
+                  </span>
                 </li>
               ))}
             </ul>
 
-            <div className="flex justify-center gap-3">
+            {/* Action Buttons Container */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              {" "}
+              {/* Save/Update Button - Primary background color */}
               <button
-                className="px-4 py-2 rounded-xl bg-[#6b4f4f] text-white hover:bg-[#553939] transition"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#c14564] text-white font-semibold shadow-md hover:bg-[#a63b55] transition active:scale-[0.98]" // Adjusted padding, font-weight, shadow
                 onClick={id ? handleSaveResult : () => setShowSaveForm(true)}
               >
                 💾 {id ? "Update" : "Save"}
               </button>
-
+              {/* Copy Button - Outlined style */}
               <button
-                className="px-4 py-2 rounded-xl bg-[#d1b89b] text-[#4a3c3c] hover:bg-[#c5a982] transition"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#c14564] text-[#c14564] font-semibold hover:bg-[#c14564]/10 transition active:scale-[0.98]" // Changed to outlined style
                 onClick={handleCopyResult}
               >
                 📋 Copy
               </button>
+              {/* Export PDF Button - Outlined style */}
               <button
-                className="px-4 py-2 rounded-xl bg-[#88a8d8] text-white hover:bg-[#6c8dc4] transition"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[#c14564] text-[#c14564] font-semibold hover:bg-[#c14564]/10 transition active:scale-[0.98]" // Changed to outlined style
                 onClick={handleExportPDF}
               >
-                📄 Export PDF
+                📄 PDF
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Animation Styles (Kept original styles) */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
+      `}</style>
 
       {/* Popup Save Form (Giữ nguyên, nhưng state `billName` đã được load) */}
       {showSaveForm && (
@@ -637,7 +714,10 @@ export default function MoneyShare() {
                 className="px-6 py-2 rounded-xl bg-[#6b4f4f] text-white"
                 onClick={async () => {
                   if (!billName.trim()) {
-                    alert("⚠️ Bill name is required!");
+                    setAlertModal({
+                      isOpen: true,
+                      message: "⚠️ Bill name is required!",
+                    });
                     return;
                   }
                   await handleSaveResult(); // <-- Gọi hàm save chính
@@ -651,6 +731,14 @@ export default function MoneyShare() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        text={alertModal.message}
+        isAlertMode={alertModal.isAlertMode}
+        onClose={() => setAlertModal({ isOpen: false, message: "" })}
+        onConfirm={alertModal.onConfirm ? alertModal.onConfirm : () => setAlertModal({ isOpen: false, message: "" })}
+      />
 
       {isScanning && (
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-[9999]">

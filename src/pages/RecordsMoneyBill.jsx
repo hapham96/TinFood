@@ -31,7 +31,7 @@ export default function RecordsMoneyBill() {
 
   const handleCreateBill = async (billData) => {
     try {
-      const billService = new MoneyBill(); // Tạo instance service
+      const billService = new MoneyBill();
       const newBill = await billService.createMoneyBill(billData);
       setShowAddModal(false);
 
@@ -88,12 +88,15 @@ export default function RecordsMoneyBill() {
 
       <ConfirmModal
         isOpen={!!selectedId}
-        text="Are you sure you want to delete this bill?"
+        title="Delete Item?"
+        text="Are you sure you want to permanently delete this item?"
         onClose={() => setSelectedId(null)}
         onConfirm={() => {
           handleDelete(selectedId);
           setSelectedId(null);
         }}
+        confirmText="Yes, Delete"
+        cancelText="No, Keep It"
       />
 
       <AddNewBillModal

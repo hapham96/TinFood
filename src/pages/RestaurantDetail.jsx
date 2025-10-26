@@ -114,7 +114,7 @@ export default function RestaurantDetail() {
 
         {/* Back + Favorite buttons */}
         <div className="absolute top-4 left-4 flex gap-3">
-          <button className="color-primary" onClick={() => navigate(-1)}>
+          <button className="bg-[#c14564] text-white px-3 py-2 rounded-full shadow-md hover:bg-[#a83853] transition z-50" onClick={() => navigate(-1)}>
             ←
           </button>
         </div>

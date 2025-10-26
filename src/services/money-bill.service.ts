@@ -10,23 +10,23 @@ export const MoneyBillType = {
 };
 export class MoneyBill {
   id: number; // createAt timestamp
-  participants?: string[]; // nếu type là FOOD thì ko bắt buộc nhập
+  participants?: string[]; // if type is FOOD, this is optional
   type: keyof typeof MoneyBillType | any;
   expenses: {
-    name: string; // tên món ăn, dịch vụ
-    amount: number; // tiền món ăn (giá gốc chưa giảm), dịch vụ
-    paidBy?: string; // nếu type là FOOD thì ko bắt buộc nhập - nếu nhập là món ăn của ng đó
-    quantity?: number; // số lượng món ăn (mặc định 1) nếu type là Normal ko bắt buộc nhập -
+    name: string; // item or service name
+    amount: number; // item price (original price before discount), service
+    paidBy?: string; // if type is FOOD, optional - if entered, it's that person's item
+    quantity?: number; // item quantity (default 1), if type is Normal, optional
     createdAt?: string;
-    subBillId?: number; // ID của bill con đã lưu (nếu có bill con)
+    subBillId?: number; // ID of the saved sub-bill (if there is a sub-bill)
   }[];
-  discountAmount?: number; // tiền coupon giảm giá được áp dụng cho tổng hóa đơn
-  shipAmount?: number; // tiền ship
+  discountAmount?: number; // coupon discount amount applied to the total bill
+  shipAmount?: number; // shipping fee
   name?: string; // name of bill
-  address?: string; // địa chỉ
-  date?: string; // ngày giờ
-  actualTotal?: number; // số tiền thực tế đã thanh toán
-  isSubBill?: boolean; // đánh dấu bill (Food) này là con của hóa đơn NORMAL
+  address?: string; // address
+  date?: string; // date/time
+  actualTotal?: number; // actual amount paid
+  isSubBill?: boolean; // marks this (Food) bill as a child of a NORMAL bill
 
   private storage: StorageService;
 
@@ -38,7 +38,7 @@ export class MoneyBill {
     this.storage = new StorageService();
   }
 
-  // Tổng tiền trước giảm
+  // Total amount before discount
   get totalAmount() {
     return this.expenses.reduce((sum, e) => {
       const qty = Number(e.quantity || 1);
@@ -47,33 +47,33 @@ export class MoneyBill {
     }, 0);
   }
 
-  //  Trung bình chia đều (nếu có participants)
+  //  Average amount evenly split (if participants exist)
   get averageAmount() {
     if (!this.participants || this.participants.length === 0) return 0;
     return Math.round(this.totalAmount / this.participants.length);
   }
 
-  //  Tính tổng sau khi áp dụng giảm giá & ship
+  //  Calculate total after applying discount & shipping
   get totalAfterDiscount() {
     const ship = Number(this.shipAmount || 0);
     const discount = Number(this.discountAmount || 0);
     return Math.max(0, this.totalAmount + ship - discount);
   }
 
-  // tổng tiền cả ship + tiền món ăn (giá gốc chưa giảm)
+  // total amount including shipping + items (original price)
   get totalAmountAll() {
     const ship = Number(this.shipAmount || 0);
     return this.totalAmount + ship;
   }
 
-  //  Tính tỉ lệ giảm trên tổng
+  //  Calculate discount ratio on the total
   get discountRatio() {
     return this.totalAmount > 0
       ? this.totalAfterDiscount / this.totalAmount
       : 1;
   }
 
-  // 💡 Tính kết quả từng người
+  // (Old)Calculate result for each person
   calculateBalances() {
     const result: Record<string, number> = {};
 
@@ -95,25 +95,25 @@ export class MoneyBill {
       });
     } else if (this.type === MoneyBillType.FOOD) {
       if (!this.expenses?.length) throw new Error("No expenses");
-      // FOOD mode: tính từng món, nhân quantity, áp dụng discount ratio
+      // FOOD mode: calculate each item, multiply by quantity, apply discount ratio
       this.expenses.forEach((e) => {
         const qty = Number(e.quantity || 1);
         const finalAmount = Math.round(e.amount * qty * this.discountRatio);
-        result[e.name] = finalAmount / (e.quantity || 1); // key = tên món ăn
+        result[e.name] = finalAmount / (e.quantity || 1); // key = item name
       });
     }
 
     return result;
   }
 
-  // 💰 Tính giá thực tế trung bình cho mỗi món (1 qty) dựa vào realPaymentAmount
+  // (NEW) Calculate average actual price per item (1 qty) based on realPaymentAmount
   calculateBalancesByRealPayment(): Record<string, number> {
     const result: Record<string, number> = {};
     if (!this.expenses?.length) throw new Error("No expenses");
     if (!this.actualTotal || this.actualTotal <= 0) {
       return this.calculateBalances();
     }
-    // Tổng giá gốc (đã nhân quantity)
+    // Total original price (multiplied by quantity)
     const totalOriginal = this.expenses.reduce((sum, e) => {
       const qty = Number(e.quantity || 1);
       const amt = Number(e.amount || 0);
@@ -122,16 +122,16 @@ export class MoneyBill {
 
     if (totalOriginal === 0) throw new Error("Total original amount is 0");
 
-    // Phân bổ lại theo tỷ lệ, nhưng chia lại cho từng qty
+    // Reallocate based on ratio, but divide per qty
     this.expenses.forEach((e) => {
       const qty = Number(e.quantity || 1);
       const amt = Number(e.amount || 0);
       const ratio = (amt * qty) / totalOriginal;
 
-      // Tổng thực tế món đó
+      // Actual total for that item
       const totalReal = (this.actualTotal! as number) * ratio;
 
-      // 💡 Giá trung bình 1 phần
+      // Average price per unit
       const pricePerQty = Math.round(totalReal / qty);
 
       result[e.name] = pricePerQty;
@@ -142,7 +142,8 @@ export class MoneyBill {
 
   /**
    * Create a new money bill and save it silently.
-   * Returns the newly created bill (with ID).
+   * @param init Partial<MoneyBill> data to initialize the bill.
+   * @returns the newly created bill (with ID).
    */
   async createMoneyBill(init: Partial<MoneyBill>): Promise<MoneyBill> {
     try {
@@ -169,13 +170,14 @@ export class MoneyBill {
     }
   }
 
-  // save
-  async saveMoneyBill(
-    bill: MoneyBill,
-    showAlert = true
-  ): Promise<void> {
+  /**
+   * Save OR Update bill
+   * @param bill<MoneyBill> data of the bill.
+   * @param showAlert whether to show alert when success.
+   */
+  async saveMoneyBill(bill: MoneyBill, showAlert = true): Promise<void> {
     try {
-      let savedList = await this.getMoneyBills(); // <-- Lấy TẤT CẢ bill
+      let savedList = await this.getMoneyBills(); // <-- Get ALL bills
       if (!Array.isArray(savedList)) {
         savedList = [];
       }
@@ -205,7 +207,11 @@ export class MoneyBill {
     }
   }
 
-  // Get all saved bills
+  /**
+   * Get all saved bills
+   * @param includeSubBills includeSubBills = false to get main bills only for display
+   * @returns list of MoneyBill
+   */
   async getMoneyBills(includeSubBills = true): Promise<MoneyBill[]> {
     let savedList = (await this.storage.get(STORAGE_KEYS.MONEY_BILLS)) as any;
     savedList = JSON.parse(savedList);
@@ -241,13 +247,13 @@ export class MoneyBill {
       let allBills = await this.getMoneyBills();
       const idString = id.toString();
       const billToDelete = allBills.find((b) => b.id.toString() === idString);
-      const allIdsToDelete = new Set<string>(); // Tạo một danh sách các ID cần xóa
-      allIdsToDelete.add(idString); // Thêm ID của bill cha
+      const allIdsToDelete = new Set<string>(); // add new list bill need to delete
+      allIdsToDelete.add(idString); // ID of parent bill
 
       if (billToDelete && billToDelete.expenses?.length > 0) {
         billToDelete.expenses.forEach((expense) => {
           if (!!expense.subBillId) {
-            // Nếu chi tiêu là một bill con, thêm ID của nó vào danh sách xóa
+            // if expense has subBillId, add to delete list
             allIdsToDelete.add(expense.subBillId.toString());
           }
         });
@@ -270,10 +276,14 @@ export class MoneyBill {
       headers: { "Content-Type": "application/json" },
     });
   }
-  //  để lưu bill con một cách thầm lặng
+
+  /**
+   * Save sub-bill in silent
+   * @param subBillData Partial<MoneyBill> data of the sub-bill.
+   * @returns the newly created sub-bill (with ID).
+   */
   async saveSubBill(subBillData: Partial<MoneyBill>): Promise<MoneyBill> {
     try {
-      // Lấy TẤT CẢ các bill đã lưu, bao gồm cả bill con
       let savedList = await this.getMoneyBills();
       if (!Array.isArray(savedList)) {
         savedList = [];
@@ -282,7 +292,7 @@ export class MoneyBill {
       const subBill = new MoneyBill({
         ...subBillData,
         id: Date.now(),
-        isSubBill: true, // <-- Đánh dấu là bill con (bị ẩn)
+        isSubBill: true, // MARK as sub-bill
         date: new Date().toLocaleString(),
       });
 
@@ -292,7 +302,7 @@ export class MoneyBill {
         JSON.stringify(savedList)
       );
 
-      return subBill; // Trả về bill con đã được lưu (với ID)
+      return subBill;
     } catch (error) {
       console.error("❌ Failed to save sub-bill:", error);
       throw new Error("Failed to save sub-bill.");
