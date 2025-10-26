@@ -119,14 +119,15 @@ export default function MoneyShare() {
         isOpen: true,
         message: "⚠️ Name is already exist!",
       });
-
-    setBill(
-      new MoneyBill({
-        ...bill,
-        participants: [...(bill.participants ?? []), tempName],
-      })
-    );
+   const billToSave = new MoneyBill({
+     ...bill,
+     participants: [...(bill.participants ?? []), tempName],
+   });
+    setBill(billToSave);
     setTempName("");
+    // auto update bill in storage every time addPerson
+    bill.saveMoneyBill(billToSave, false);
+
   };
 
   const removePerson = (p) => {
@@ -195,7 +196,7 @@ export default function MoneyShare() {
         address: billAddress.trim(),
       });
       await bill.saveMoneyBill(billToSave);
-      navigate("/bill-records");
+      setShowPopup(false);
     } catch (error) {
       console.error("❌ Save failed:", error);
       setAlertModal({
