@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { MoneyBill } from "../services/money-bill.service";
 import ConfirmModal from "../components/modals/ConfirmModal";
 import RecordItem from "./RecordItem";
+import AddNewBillModal from "../components/modals/AdNewBillModal";
 
 export default function RecordsMoneyBill() {
   const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchBills = async () => {
     const bill = new MoneyBill();
@@ -21,7 +23,26 @@ export default function RecordsMoneyBill() {
     setRecords((prev) => prev.filter((r) => r.id !== selectedId));
   };
 
-  const addNewBill = () => navigate(`/money-share`);
+  const addNewBill = () => {
+    setShowAddModal(true);
+  };
+
+  const handleCreateBill = async (billData) => {
+    try {
+      const billService = new MoneyBill(); // Tạo instance service
+      const newBill = await billService.createMoneyBill(billData);
+      setShowAddModal(false);
+
+      if (newBill && newBill.id) {
+        navigate(`/money-share/${newBill.id}`);
+      } else {
+        throw new Error("Failed to get new bill ID");
+      }
+    } catch (error) {
+      console.error("Failed to create bill:", error);
+      alert("Error creating new bill. Please try again.");
+    }
+  };
 
   useEffect(() => {
     fetchBills();
@@ -40,7 +61,6 @@ export default function RecordsMoneyBill() {
         </button>
       </div>
 
-      {/* Empty state */}
       {records.length === 0 ? (
         <div className="p-4 text-center text-gray-500 flex-1">
           No saved bills yet <br />
@@ -64,7 +84,6 @@ export default function RecordsMoneyBill() {
         </div>
       )}
 
-      {/* Confirm delete modal */}
       <ConfirmModal
         isOpen={!!selectedId}
         text="Are you sure you want to delete this bill?"
@@ -73,6 +92,12 @@ export default function RecordsMoneyBill() {
           handleDelete(selectedId);
           setSelectedId(null);
         }}
+      />
+
+      <AddNewBillModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCreate={handleCreateBill}
       />
     </div>
   );

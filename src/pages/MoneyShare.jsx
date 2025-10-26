@@ -64,7 +64,6 @@ export default function MoneyShare() {
     setConfirmData(null);
   };
 
-  // ⚡ Load bill
   useEffect(() => {
     const loadBill = async () => {
       if (!id) return;
