@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from "../utils/constants";
 import { StorageService } from "./storage.service";
 import { apiService } from "./baseApi/api.service";
+import { useLogger } from "../services/logger/useLogger";
 
 // type of money bill
 export const MoneyBillType = {
@@ -17,7 +18,7 @@ export class MoneyBill {
     paidBy?: string; // nếu type là FOOD thì ko bắt buộc nhập - nếu nhập là món ăn của ng đó
     quantity?: number; // số lượng món ăn (mặc định 1) nếu type là Normal ko bắt buộc nhập -
     createdAt?: string;
-    subBillId?: number; // ID của bill con đã lưu (nếu có là có bill con)
+    subBillId?: number; // ID của bill con đã lưu (nếu có bill con)
   }[];
   discountAmount?: number; // tiền coupon giảm giá được áp dụng cho tổng hóa đơn
   shipAmount?: number; // tiền ship
@@ -171,10 +172,10 @@ export class MoneyBill {
   // save
   async saveMoneyBill(
     bill: MoneyBill,
-    balances?: Record<string, number>
+    showAlert = true
   ): Promise<void> {
     try {
-      let savedList = await this.getMoneyBills(true); // <-- Lấy TẤT CẢ bill
+      let savedList = await this.getMoneyBills(); // <-- Lấy TẤT CẢ bill
       if (!Array.isArray(savedList)) {
         savedList = [];
       }
@@ -188,11 +189,12 @@ export class MoneyBill {
       const existingIndex = savedList.findIndex((x) => x.id === record.id);
       if (existingIndex >= 0) {
         savedList[existingIndex] = record;
-        alert("✅ Record updated successfully!");
+        showAlert && alert("✅ Record updated successfully!");
       } else {
         savedList.push(record);
-        alert("💾 Create new bill successfully!");
+        showAlert && alert("💾 Create new bill successfully!");
       }
+
       await this.storage.set(
         STORAGE_KEYS.MONEY_BILLS,
         JSON.stringify(savedList)
@@ -204,13 +206,14 @@ export class MoneyBill {
   }
 
   // Get all saved bills
-  async getMoneyBills(includeSubBills = false): Promise<MoneyBill[]> {
+  async getMoneyBills(includeSubBills = true): Promise<MoneyBill[]> {
     let savedList = (await this.storage.get(STORAGE_KEYS.MONEY_BILLS)) as any;
     savedList = JSON.parse(savedList);
 
     const bills = Array.isArray(savedList)
       ? savedList.map((b) => new MoneyBill(b))
       : [];
+    console.log("Retrieved all bills from storage:", bills);
 
     if (includeSubBills) {
       return bills; // return all bills including sub-bills
@@ -229,17 +232,34 @@ export class MoneyBill {
     return found ? new MoneyBill(found) : null;
   }
 
+  /**
+   * delete bill and sub-bill related to it
+   * @param id
+   */
   async deleteMoneyBill(id: number) {
     try {
-      let savedList = await this.getMoneyBills();
-      savedList = savedList.filter((b) => b.id.toString() !== id.toString());
-      await this.storage.set(
-        STORAGE_KEYS.MONEY_BILLS,
-        JSON.stringify(savedList)
+      let allBills = await this.getMoneyBills();
+      const idString = id.toString();
+      const billToDelete = allBills.find((b) => b.id.toString() === idString);
+      const allIdsToDelete = new Set<string>(); // Tạo một danh sách các ID cần xóa
+      allIdsToDelete.add(idString); // Thêm ID của bill cha
+
+      if (billToDelete && billToDelete.expenses?.length > 0) {
+        billToDelete.expenses.forEach((expense) => {
+          if (!!expense.subBillId) {
+            // Nếu chi tiêu là một bill con, thêm ID của nó vào danh sách xóa
+            allIdsToDelete.add(expense.subBillId.toString());
+          }
+        });
+      }
+      const newList = allBills.filter(
+        (b) => !allIdsToDelete.has(b.id.toString())
       );
+      await this.storage.set(STORAGE_KEYS.MONEY_BILLS, JSON.stringify(newList));
+
       return true;
     } catch (error) {
-      console.error("❌ Failed to delete bill:", error);
+      console.error("❌ Failed to delete bill and its children:", error);
       return false;
     }
   }
@@ -254,7 +274,7 @@ export class MoneyBill {
   async saveSubBill(subBillData: Partial<MoneyBill>): Promise<MoneyBill> {
     try {
       // Lấy TẤT CẢ các bill đã lưu, bao gồm cả bill con
-      let savedList = await this.getMoneyBills(true);
+      let savedList = await this.getMoneyBills();
       if (!Array.isArray(savedList)) {
         savedList = [];
       }

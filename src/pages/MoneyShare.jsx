@@ -8,73 +8,60 @@ import { useNavigate, useParams } from "react-router-dom";
 import { cameraService } from "../services/camera.service";
 import { useLogger } from "../services/logger/useLogger";
 import { sleep } from "../utils/helpers";
+
+// Component
 import ModeTabs from "../components/ModeTabs.jsx";
-import AddExpensePopup from "./AddExpensePopup.jsx";
-import { CiCalculator1 } from "react-icons/ci";
+import AddExpensePopup from "../components/modals/AddExpensePopup.jsx";
+import SubBillCreatorModal from "../components/modals/SubBillCreatorModal.jsx";
 
 export default function MoneyShare() {
   const logger = useLogger("MoneySharePage");
   const navigate = useNavigate();
   const { id } = useParams();
-  const [bill, setBill] = useState(
-    () => new MoneyBill({ type: MoneyBillType.NORMAL })
-  );
+
+  // === State chính ===
+  const [bill, setBill] = useState(null); // Bắt đầu là null
+  const [isLoading, setIsLoading] = useState(true); // Bắt đầu loading
+
+  // === State cho UI ===
   const [balances, setBalances] = useState({});
   const [showPopup, setShowPopup] = useState(false);
   const [tempName, setTempName] = useState("");
+  const [isScanning, setIsScanning] = useState(false); // Dành cho scan FOOD mode
+
+  // === State cho Form Save (lưu bill cha) ===
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [billName, setBillName] = useState("");
   const [billAddress, setBillAddress] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [confirmData, setConfirmData] = useState(null);
+
+  // === State quản lý Sub-Bill & Modals ===
   const [showAddExpense, setShowAddExpense] = useState(false);
-  const handleScanBill = async () => {
-    try {
-      const base64Url = await cameraService.selectOrCaptureImage();
-      if (!base64Url) return;
-      setIsScanning(true);
-      logger.info("Get Image (base64):", base64Url);
-      const response = await bill.decodeBillInfo(base64Url); //   send base64 to API decode
-      // await sleep(5000); // simulate delay
-      // const response = {"expenses":[{"name":"Japchae","amount":58000,"quantity":1},{"name":"Lẩu Kimchi CN","amount":65000,"quantity":1},{"name":"Lẩu Kimchi Heo","amount":65000,"quantity":1},{"name":"Gà rán C.N2","amount":75000,"quantity":1},{"name":"Nudu Kiribati","amount":49000,"quantity":1},{"name":"3 Phomai viên+Pepsi","amount":39000,"quantity":1},{"name":"Pepsi","amount":30000,"quantity":2}],"discountAmount":0,"shipAmount":0,"actualTotal":381000,"totalAmount":381000}
-      logger.info("🧾 API Response:", response);
-      if (response && response.totalAmount) delete response.totalAmount;
-      const parsedBill = new MoneyBill({
-        ...response,
-        type: MoneyBillType.FOOD,
-      });
-      logger.info("Parsed Bill from OCR:", parsedBill);
-      if (parsedBill) {
-        setBill(parsedBill);
-      }
-      // setConfirmData(parsedBill); // TODO: if need a confirm data step
-    } catch (err) {
-      logger.error("❌ Scan error:", err);
-      alert("Failed to scan or decode bill!");
-    } finally {
-      setIsScanning(false);
-    }
-  };
+  const [showSubBillCreator, setShowSubBillCreator] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState(null); // Lưu data từ sub-bill
+  // === flag for back btn ===
+  const [savedParentBillId, setSavedParentBillId] = useState("");
 
-  const handleConfirmSave = async () => {
-    if (!confirmData) return;
-    const bill = new MoneyBill(confirmData);
-    setBill(bill);
-    setConfirmData(null);
-  };
-
+  // ⚡ Load bill (Luồng chính)
   useEffect(() => {
     const loadBill = async () => {
-      if (!id) return;
+      if (!id) {
+        logger.warn("MoneyShare accessed without ID. Redirecting.");
+        navigate("/bill-records");
+        return;
+      }
+      setIsLoading(true);
       try {
-        const loaded = await bill.getMoneyBill(id);
+        const billService = new MoneyBill();
+        const loaded = await billService.getMoneyBill(id);
         if (!loaded) {
           alert("⚠️ Bill not found!");
           navigate("/bill-records");
           return;
         }
         setBill(new MoneyBill(loaded));
+        setBillName(loaded.name || "");
+        setBillAddress(loaded.address || "");
+        logger.info("✅ Bill loaded:", loaded);
       } catch (err) {
         console.error("❌ Load failed:", err);
         alert("Failed to load bill.");
@@ -83,9 +70,33 @@ export default function MoneyShare() {
       }
     };
     loadBill();
-  }, [id]);
+  }, [id, navigate, logger]);
 
-  // ➕ Add participant
+  // 🔍 Scan Bill (CHỈ DÀNH CHO FOOD MODE - thay thế toàn bộ bill)
+  const handleScanBill = async () => {
+    if (bill.type !== MoneyBillType.FOOD) return;
+    try {
+      const base64Url = await cameraService.selectOrCaptureImage();
+      if (!base64Url) return;
+      setIsScanning(true);
+      const response = await bill.decodeBillInfo(base64Url);
+      logger.info("🧾 API Response (FOOD Mode):", response);
+      if (response && response.totalAmount) delete response.totalAmount;
+      const parsedBill = new MoneyBill({
+        ...bill, // Giữ lại ID, Name, Address
+        ...response, // Ghi đè expenses, actualTotal, v.v.
+        type: MoneyBillType.FOOD,
+      });
+      setBill(parsedBill);
+    } catch (err) {
+      logger.error("❌ Scan error:", err);
+      alert("Failed to scan or decode bill!");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // ➕ Add participant (NORMAL mode)
   const addPerson = () => {
     if (!tempName.trim()) return;
     if (bill.participants?.includes(tempName))
@@ -110,16 +121,25 @@ export default function MoneyShare() {
     );
   };
 
-  const removeExpense = (i) => {
+  const removeExpense = (i, subBillId) => {
     const newExp = [...bill.expenses];
     newExp.splice(i, 1);
     setBill(new MoneyBill({ ...bill, expenses: newExp }));
+    if (subBillId) {
+      // remove in storage
+      bill.deleteMoneyBill(subBillId);
+      logger.info("✅ Sub-bill deleted with ID:", subBillId);
+    }
   };
 
   // ⚙️ Calculate
   const calculateBalances = () => {
     try {
-      const result = bill.calculateBalancesByRealPayment();
+      // Dùng hàm gốc (NORMAL mode) hay hàm mới (FOOD mode)
+      const result =
+        bill.type === MoneyBillType.FOOD && bill.actualTotal
+          ? bill.calculateBalancesByRealPayment()
+          : bill.calculateBalances(); // Hàm gốc cho NORMAL
       setBalances(result);
       setShowPopup(true);
     } catch (err) {
@@ -127,10 +147,15 @@ export default function MoneyShare() {
     }
   };
 
-  // 💾 Save
+  // 💾 Save (Lưu/Cập nhật bill CHÍNH)
   const handleSaveResult = async () => {
     try {
-      await bill.saveMoneyBill(bill);
+      const billToSave = new MoneyBill({
+        ...bill,
+        name: billName.trim(),
+        address: billAddress.trim(),
+      });
+      await bill.saveMoneyBill(billToSave);
       navigate("/bill-records");
     } catch (error) {
       console.error("❌ Save failed:", error);
@@ -159,6 +184,13 @@ export default function MoneyShare() {
     alert("📋 Result copied!");
   };
 
+  const handleExportPDF = () => {
+    exportToPDF(bill, balances);
+  };
+
+  // === Quản lý luồng Sub-Bill ===
+
+  // 1. Mở popup Thêm Chi Tiêu
   const handleAddExpense = () => {
     if (
       bill.type === MoneyBillType.NORMAL &&
@@ -168,27 +200,85 @@ export default function MoneyShare() {
         "⚠️ Please add at least one participant before adding an expense."
       );
     }
+    setExpenseToEdit(null); // Mở ở chế độ "thêm mới"
     setShowAddExpense(true);
   };
 
-  const handleExportPDF = () => {
-    exportToPDF(bill, balances);
+  // 2. Bắt đầu tạo Sub-Bill (từ AddExpensePopup)
+  const handleStartSubBill = () => {
+    setShowAddExpense(false); // Đóng modal 1
+    setShowSubBillCreator(true); // Mở modal 2 (tạo bill con)
   };
 
+  // 3. Sub-Bill đã được tạo (từ SubBillCreatorModal)
+  const handleSubBillCreated = (savedSubBill) => {
+    setShowSubBillCreator(false); // Đóng modal 2
+
+    // Chuẩn bị data cho modal 1
+    setExpenseToEdit({
+      name: savedSubBill.name,
+      amount: savedSubBill.actualTotal || savedSubBill.totalAfterDiscount,
+      subBillId: savedSubBill.id,
+      isSubBill: true, // Đánh dấu đây là bill con
+    });
+
+    setShowAddExpense(true); // Mở lại modal 1
+  };
+
+  // 4. Lưu chi tiêu (từ AddExpensePopup)
+  const handleSaveExpense = (expense) => {
+    const billToSave = new MoneyBill({
+      ...bill,
+      expenses: [...bill.expenses, expense],
+    });
+    setBill(billToSave);
+    // auto update bill in storage every time add expense
+    bill.saveMoneyBill(billToSave, false);
+    setShowAddExpense(false);
+    setExpenseToEdit(null);
+  };
+
+  const handleClickTableRow = (subBillId) => {
+    if (subBillId) {
+      console.log("saved parent bill id:", id);
+      setSavedParentBillId(id);
+      navigate(`/money-share/${subBillId}`);
+    }
+  };
+
+  const handleBackButton = () => {
+    console.log("handleBackButton -> saved parent bill id:", id);
+    if (savedParentBillId) {
+      navigate(`/money-share/${savedParentBillId}`);
+      setSavedParentBillId("");
+      return;
+    }
+    navigate("/bill-records");
+  };
+
+  // === Loading Guard ===
+  if (isLoading || !bill) {
+    return (
+      <div className="app-content-padding text-center py-10">
+        <p className="text-gray-500 animate-pulse">Loading bill...</p>
+      </div>
+    );
+  }
+
+  // === Render ===
   return (
     <div className="app-content-padding">
-      <div style={{ fontSize: "14px" }}>
+      {/* <div style={{ fontSize: "14px" }}>
         <ModeTabs
-          disabled={!!id}
-          value={bill.type}
-          onChange={(mode) => setBill(new MoneyBill({ ...bill, type: mode }))}
+          disabled={true}
+          onChange={() => {}}
         />
-      </div>
+      </div> */}
 
       {/* 🧾 Header section */}
       <div className="header-bar mt-3">
         <button
-          onClick={() => navigate("/bill-records")}
+          onClick={handleBackButton}
           className="bg-[#c14564] text-white px-3 py-2 rounded-full shadow-md hover:bg-[#a83853] transition z-50"
         >
           ←
@@ -200,17 +290,21 @@ export default function MoneyShare() {
       <h1 className="text-2xl font-semibold mb-4 text-center color-primary">
         {bill?.name ? bill.name : "Share Bill"}
       </h1>
+
+      {/* Nút Scan (chỉ cho FOOD mode) */}
       <div>
-        {bill.type === MoneyBillType.FOOD && !id && (
+        {bill.type === MoneyBillType.FOOD && (
           <button
             onClick={handleScanBill}
             disabled={isScanning}
-            className={`px-2 py-2 font-medium text-indigo-900 shadow-sm transition rounded-xl`}
+            className={`px-2 py-2 font-medium text-white shadow-sm bg-[#ff8f28] rounded-xl`}
           >
             {isScanning ? "🔍 Scanning..." : "🔍 Scan Bill AI"}
           </button>
         )}
       </div>
+
+      {/* Participants (chỉ cho NORMAL mode) */}
       {bill.type === MoneyBillType.NORMAL && (
         <div className="section">
           <h2>👥 Participants</h2>
@@ -232,7 +326,7 @@ export default function MoneyShare() {
             </p>
           )}
           <ul className="people-list">
-            {bill?.participants?.map((p, i) => (
+            {bill.participants?.map((p, i) => (
               <li key={i}>
                 {p}
                 <button onClick={() => removePerson(p)}>✕</button>
@@ -242,17 +336,18 @@ export default function MoneyShare() {
         </div>
       )}
 
+      {/* Expenses (cho cả 2 mode) */}
       <div className="section">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-[#4b2e19]">💰 Expenses</h2>
           <button
             className="circle-btn flex items-center"
-            onClick={handleAddExpense}
+            onClick={handleAddExpense} // <-- Luôn mở AddExpensePopup
           >
             +
           </button>
         </div>
-        {!bill?.expenses?.length && (
+        {!bill.expenses?.length && (
           <p className="text-sm text-gray-500 text-italic">
             {bill.type === MoneyBillType.FOOD
               ? "No expenses added yet. You can add them manually using the + button or automatically by scanning a real bill with AI."
@@ -273,17 +368,40 @@ export default function MoneyShare() {
             <tbody>
               {bill.expenses.map((e, i) => (
                 <tr key={i}>
-                  <td>
-                    {e.name} <br />
+                  {/* Cột Tên */}
+                  <td onClick={() => handleClickTableRow(e.subBillId)}>
+                    {e.subBillId ? (
+                      <span className="font-semibold"> {e.name}</span>
+                    ) : (
+                      e.name
+                    )}
+                    <br />
                     {e.createdAt ? new Date(e.createdAt).toLocaleString() : ""}
                   </td>
-                  <td>{e.amount.toLocaleString()}</td>
+
+                  <td onClick={() => handleClickTableRow(e.subBillId)}>
+                    {e.amount.toLocaleString()}
+                  </td>
+
                   {bill.type === MoneyBillType.FOOD && (
-                    <td>{e.quantity || 1}</td>
+                    <td onClick={() => handleClickTableRow(e.subBillId)}>
+                      {e.quantity || 1}
+                    </td>
                   )}
-                  {bill.type === MoneyBillType.NORMAL && <td>{e.paidBy}</td>}
+
+                  {bill.type === MoneyBillType.NORMAL && (
+                    <td onClick={() => handleClickTableRow(e.subBillId)}>
+                      {e.subBillId ? (
+                        <span className="font-semibold">{e.paidBy}</span>
+                      ) : (
+                        e.paidBy
+                      )}
+                    </td>
+                  )}
                   <td>
-                    <button onClick={() => removeExpense(i)}>✕</button>
+                    <button onClick={() => removeExpense(i, e.subBillId)}>
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -291,12 +409,14 @@ export default function MoneyShare() {
           </table>
         )}
       </div>
+
+      {/* Food Options (chỉ cho FOOD mode) */}
       {bill.type === MoneyBillType.FOOD && (
         <div className="section p-4 rounded-xl bg-[#fff8f6]">
+          {/* ... (Inputs: Real Payment, Discount, Ship Fee) ... */}
           <h2 className="text-lg font-semibold mb-3">
             Adding bill info (optional)
           </h2>
-
           <div className="extra-inputs space-y-3">
             <div className="flex justify-between items-center">
               <span className="w-1/3 text-gray-700 font-medium">
@@ -317,7 +437,6 @@ export default function MoneyShare() {
                 }
               />
             </div>
-
             <div className="flex justify-between items-center">
               <span className="w-1/3 text-gray-700 font-medium">Discount</span>
               <input
@@ -335,7 +454,6 @@ export default function MoneyShare() {
                 }
               />
             </div>
-
             <div className="flex justify-between items-center">
               <span className="w-1/3 text-gray-700 font-medium">Ship Fee</span>
               <input
@@ -357,6 +475,7 @@ export default function MoneyShare() {
         </div>
       )}
 
+      {/* Summary (cho cả 2 mode) */}
       {bill.expenses?.length > 0 && (
         <div className="summary">
           {bill.type === MoneyBillType.FOOD && (
@@ -382,18 +501,25 @@ export default function MoneyShare() {
         <AddExpensePopup
           type={bill.type}
           participants={bill.participants}
-          onClose={() => setShowAddExpense(false)}
-          onSave={(expense) =>
-            setBill(
-              new MoneyBill({
-                ...bill,
-                expenses: [...bill.expenses, expense],
-              })
-            )
-          }
+          expenseData={expenseToEdit} // <-- Prop mới
+          onClose={() => {
+            setShowAddExpense(false);
+            setExpenseToEdit(null); // <-- Reset
+          }}
+          onSave={handleSaveExpense} // <-- Hàm mới
+          onAddSubBill={handleStartSubBill} // <-- Hàm mới
         />
       )}
 
+      {/* Modal tạo Sub-Bill*/}
+      <SubBillCreatorModal
+        isOpen={showSubBillCreator}
+        onClose={() => setShowSubBillCreator(false)}
+        onSave={handleSubBillCreated}
+        logger={logger}
+      />
+
+      {/* Popup Result */}
       {showPopup && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
@@ -461,6 +587,7 @@ export default function MoneyShare() {
         </div>
       )}
 
+      {/* Popup Save Form (Giữ nguyên, nhưng state `billName` đã được load) */}
       {showSaveForm && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
@@ -477,24 +604,21 @@ export default function MoneyShare() {
             >
               ✖
             </button>
-
             <h3 className="text-2xl font-semibold mb-5 text-center">
-              💾 Save Bill
+              💾 Update Bill
             </h3>
-
-            {/* Nhập tên bill */}
+            {/* Input Tên bill */}
             <div className="mb-4">
               <label className="block text-sm mb-1">📌 Bill Name (*)</label>
               <input
                 type="text"
                 placeholder="Enter bill name"
-                value={billName}
+                value={billName} // <-- Đã load từ state
                 onChange={(e) => setBillName(e.target.value)}
-                className="w-full border border-[#d6c6a8] rounded-lg p-2 bg-[#fffaf2] text-[#4a3c3c] focus:outline-none focus:ring-2 focus:ring-[#c6a982]"
+                className="w-full border border-[#d6c6a8] rounded-lg p-2"
               />
             </div>
-
-            {/* Nhập địa chỉ */}
+            {/* Input Địa chỉ */}
             <div className="mb-6">
               <label className="block text-sm mb-1">
                 🏠 Address (optional)
@@ -502,40 +626,23 @@ export default function MoneyShare() {
               <input
                 type="text"
                 placeholder="Enter address"
-                value={billAddress}
+                value={billAddress} // <-- Đã load từ state
                 onChange={(e) => setBillAddress(e.target.value)}
-                className="w-full border border-[#d6c6a8] rounded-lg p-2 bg-[#fffaf2] text-[#4a3c3c] focus:outline-none focus:ring-2 focus:ring-[#c6a982]"
+                className="w-full border border-[#d6c6a8] rounded-lg p-2"
               />
             </div>
-
+            {/* Nút Save */}
             <div className="flex justify-center">
               <button
-                className="px-6 py-2 rounded-xl bg-[#6b4f4f] text-white font-medium hover:bg-[#553939] transition"
+                className="px-6 py-2 rounded-xl bg-[#6b4f4f] text-white"
                 onClick={async () => {
                   if (!billName.trim()) {
                     alert("⚠️ Bill name is required!");
                     return;
                   }
-
-                  try {
-                    const updatedBillData = new MoneyBill({
-                      ...bill,
-                      name: billName.trim(),
-                      address: billAddress.trim(),
-                    });
-
-                    await updatedBillData.saveMoneyBill(updatedBillData);
-
-                    // reset state after save then navigate to history page
-                    setShowSaveForm(false);
-                    setShowPopup(false);
-                    setBillName("");
-                    setBillAddress("");
-                    navigate("/bill-records");
-                  } catch (error) {
-                    logger.error("❌ Save failed:", error);
-                    alert("Failed to save record!");
-                  }
+                  await handleSaveResult(); // <-- Gọi hàm save chính
+                  setShowSaveForm(false);
+                  setShowPopup(false);
                 }}
               >
                 Save
@@ -545,40 +652,6 @@ export default function MoneyShare() {
         </div>
       )}
 
-      {/* Popup Confirm Data Scan */}
-      {confirmData && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full space-y-3 animate-fadeIn">
-            <h3 className="text-lg font-semibold mb-2">Confirm Bill Info</h3>
-            <div className="text-sm text-gray-700 space-y-1">
-              <p>
-                <strong>Name:</strong> {confirmData.name || "(No name)"}
-              </p>
-              <p>
-                <strong>Type:</strong>{" "}
-                {confirmData.type === 2 ? "🍱 FOOD" : "💰 NORMAL"}
-              </p>
-              <pre>{JSON.stringify(confirmData)}</pre>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => setConfirmData(null)}
-                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Loading when scanning bill */}
       {isScanning && (
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-[9999]">
           <div className="w-12 h-12 border-4 border-t-transparent border-yellow-300 rounded-full animate-spin mb-3"></div>

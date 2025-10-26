@@ -4,16 +4,18 @@ import { MoneyBill } from "../services/money-bill.service";
 import ConfirmModal from "../components/modals/ConfirmModal";
 import RecordItem from "./RecordItem";
 import AddNewBillModal from "../components/modals/AdNewBillModal";
+import { useLogger } from "../services/logger/useLogger";
 
 export default function RecordsMoneyBill() {
   const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-
+  const logger = useLogger("RecordsMoneyBill");
   const fetchBills = async () => {
     const bill = new MoneyBill();
-    const list = await bill.getMoneyBills();
+    const list = await bill.getMoneyBills(false);
+    logger.info("Fetched list bills:", list);
     setRecords(Array.isArray(list) ? list.reverse() : []);
   };
 
