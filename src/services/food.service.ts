@@ -13,8 +13,9 @@ interface Restaurant {
   externalId?: string;
   source?: string;
   coupons?: string[];
-  openTime?: any[];
-  priceRange?: string;
+  openTime?: any;
+  minPrice?: string;
+  maxPrice?: string;
   foods?: {
     id: number;
     name: string;
@@ -58,16 +59,13 @@ class FoodService {
         if (params?.cuisineIds) {
             params.cuisineIds.forEach((id) => query.append("cuisineIds", id));
         }
-
         const url = query.toString() ? `/restaurant?${query}` : "/restaurant";
-
-        return apiService.get<RestaurantResponse[]>(url, false);
+        return apiService.get<RestaurantResponse[]>(url);
     }
 
     async getTags(): Promise<string[]> {
-        return apiService.get<string[]>("/restaurant/cuisines", false);
+        return apiService.get<string[]>("/restaurant/cuisines");
     }
-
 
     async getRestaurantSuggest(params: {
         lat: string;
@@ -79,10 +77,8 @@ class FoodService {
         query.append("Lng", params.lng.toString());
         query.append("PageNumber", params.page.toString());
         query.append("pageSize", PAGE_SIZE.toString());
-
         const url = `/restaurant/suggest?${query}`;
-
-        return apiService.get<RestaurantResponse>(url, false);
+        return apiService.get<RestaurantResponse>(url);
     }
 }
 

@@ -272,9 +272,7 @@ export class MoneyBill {
 
   // decode bill from img
   async decodeBillInfo(base64String: string): Promise<string[]> {
-    return apiService.post("/bill", { Base64Url: base64String }, false, {
-      headers: { "Content-Type": "application/json" },
-    });
+    return apiService.post("/bill", { Base64Url: base64String });
   }
 
   /**

@@ -1,8 +1,8 @@
 // src/services/auth.service.ts
-import { BehaviorSubject } from 'rxjs';
-import { StorageService } from './storage.service';
+import { BehaviorSubject } from "rxjs";
+import { StorageService } from "./storage.service";
 import { STORAGE_KEYS } from "../utils/constants";
-
+import { userService } from "./user.service";
 export class AuthService {
   #storage: StorageService;
   #_token: string | null = null;
@@ -23,21 +23,28 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<boolean> {
+  async login(userName: string, password: string): Promise<boolean> {
     try {
-      // TODO: call real API !!
-      if (email && password) {
-        const fakeToken = `token_${Date.now()}`;
-        this.#_token = fakeToken;
-        console.log('Fake login successful - token: ', fakeToken);
-        await this.#storage.set(STORAGE_KEYS.TOKEN_KEY, fakeToken);
-        this.authState.next(true);
-
-        return true;
+      if (userName && password) {
+        const tokenResponse = await userService.login({ userName, password });
+        console.log("Login res - token: ", tokenResponse);
+        if (tokenResponse.accessToken) {
+          this.#_token = tokenResponse.accessToken;
+          await this.#storage.set(
+            STORAGE_KEYS.TOKEN_KEY,
+            tokenResponse.accessToken
+          );
+          this.authState.next(true);
+          return true;
+        } else {
+          await this.#storage.set(STORAGE_KEYS.TOKEN_KEY, "");
+          this.authState.next(false);
+        }
       }
+
       return false;
     } catch (err) {
-      console.error('Login error', err);
+      console.error("Login error", err);
       return false;
     }
   }

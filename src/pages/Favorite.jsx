@@ -28,7 +28,7 @@ export default function FavoritePage() {
 
       {favorites.length === 0 && (
         <p className="text-gray-500 text-center mt-10">
-          No favorite restaurants yet ❤️
+          No favorite restaurants yet.
         </p>
       )}
 

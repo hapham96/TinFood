@@ -55,7 +55,10 @@ class ApiService {
     private async request<T>(config: AxiosRequestConfig, checkToken: boolean): Promise<T> {
         if (checkToken) {
             const token = await authService.getToken();
-            if (!token) throw new Error("Unauthorized: Missing token");
+            if (!token) {
+                window.alert(" Missing token! Please login to continue using app");
+                throw new Error("Unauthorized: Missing token");
+            }
             config.headers = {
                 ...config.headers,
                 Authorization: `Bearer ${token}`,

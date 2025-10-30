@@ -131,7 +131,7 @@ export async function exportToPDF(bill: MoneyBill, balances: Record<string, numb
         }),
         defaultStyle: { fontSize: 11, lineHeight: 1.3 },
         styles: {
-            logo: { fontSize: 20, bold: true, color: "#2E86C1", margin: [0, 0, 0, 10] },
+            logo: { fontSize: 20, bold: true, color: "#c14564", margin: [0, 0, 0, 10] },
             header: { fontSize: 16, bold: true, color: "#333", margin: [0, 0, 0, 8] },
             subheader: { fontSize: 10, italics: true, color: "#777", margin: [0, 0, 0, 8] },
             sectionHeader: { fontSize: 13, bold: true, color: "#444", margin: [0, 10, 0, 5] },
